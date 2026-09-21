@@ -3,6 +3,31 @@ import { load } from "cheerio";
 export const FETCH_TIMEOUT_MS = 8000;
 export const MAX_EXTRACT_CHARS = 12_000;
 
+/** Sites costumam recusar UA genérico ou IP de datacenter (Vercel). */
+export const PUBLIC_FETCH_USER_AGENT =
+  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36";
+
+export function publicFetchHeaders(): Record<string, string> {
+  return {
+    Accept: "text/html,application/xhtml+xml;q=0.9,*/*;q=0.8",
+    "Accept-Language": "pt-BR,pt;q=0.9,en;q=0.8",
+    "User-Agent": PUBLIC_FETCH_USER_AGENT,
+  };
+}
+
+function fetchStatusError(status: number): string {
+  if (status === 403) {
+    return (
+      "O site bloqueou a coleta (403). Muitas páginas só abrem no navegador ou bloqueiam servidores " +
+      "(Cloudflare, anti-bot). Tente outra URL pública ou use um site que permita leitura automatizada."
+    );
+  }
+  if (status === 401) {
+    return "A página exige login (401). Use uma URL pública, sem autenticação.";
+  }
+  return `A página recusou a coleta (${status}).`;
+}
+
 export function assertPublicHttpUrl(raw: string): URL {
   let url: URL;
   try {
@@ -59,10 +84,10 @@ export async function fetchPublicPage(
     const response = await fetchImpl(url.toString(), {
       signal: controller.signal,
       redirect: "follow",
-      headers: { Accept: "text/html,text/plain;q=0.9", "User-Agent": "IdeiaMap/0.1" },
+      headers: publicFetchHeaders(),
     });
     if (!response.ok) {
-      throw new Error(`A página recusou a coleta (${response.status}).`);
+      throw new Error(fetchStatusError(response.status));
     }
     const html = await response.text();
     const text = extractTextFromHtml(html);

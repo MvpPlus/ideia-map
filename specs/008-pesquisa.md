@@ -13,6 +13,9 @@ URL pública vira texto no servidor (8s). O modelo **Prompt** sintetiza os quatr
 ### AC-1 URL pública
 Dado um host privado ou esquema inválido, quando valida a URL, então recusa.
 
+### AC-1b Coleta recusada pelo destino
+Dado HTTP 403 do site alvo, quando a coleta falha, então a mensagem explica bloqueio anti-bot/login (não culpa só o IdeiaMap). A requisição usa User-Agent de navegador comum.
+
 ### AC-2 Texto sem script
 Dado HTML com `script`, quando extrai, então o texto não inclui o conteúdo do script.
 
