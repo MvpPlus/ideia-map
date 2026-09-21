@@ -51,9 +51,13 @@ export function parseDuckDuckGoHtml(html: string): WebHit[] {
   return hits.slice(0, 8);
 }
 
-type DuckTopic =
-  | { Text?: string; FirstURL?: string }
-  | { Name?: string; Topics?: { Text?: string; FirstURL?: string }[] };
+type DuckFlatTopic = { Text?: string; FirstURL?: string };
+type DuckGroupTopic = { Name?: string; Topics?: DuckFlatTopic[] };
+type DuckTopic = DuckFlatTopic | DuckGroupTopic;
+
+function isDuckGroupTopic(topic: DuckTopic): topic is DuckGroupTopic {
+  return Array.isArray((topic as DuckGroupTopic).Topics);
+}
 
 export function parseDuckDuckGoJson(payload: {
   AbstractText?: string;
@@ -72,8 +76,8 @@ export function parseDuckDuckGoJson(payload: {
     });
   }
   for (const topic of payload.RelatedTopics ?? []) {
-    if ("Topics" in topic && topic.Topics) {
-      for (const sub of topic.Topics) {
+    if (isDuckGroupTopic(topic)) {
+      for (const sub of topic.Topics ?? []) {
         const text = sub.Text?.trim();
         const url = sub.FirstURL?.trim();
         if (text && url?.startsWith("http")) {
