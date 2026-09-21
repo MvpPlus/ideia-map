@@ -11,6 +11,7 @@ import { dataRepository } from "@/lib/data";
 import { useAppStore, useProjectBundle } from "@/lib/store";
 import type { Requirement } from "@/lib/types";
 import { uid } from "@/lib/utils";
+import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 
@@ -30,7 +31,19 @@ export default function OverviewPage() {
     setDrafts(requirements);
   }, [requirements]);
 
-  if (!project) return null;
+  if (!project) {
+    return (
+      <div className="mx-auto max-w-lg py-16 text-center">
+        <p className="display text-2xl">Projeto não encontrado</p>
+        <p className="mt-2 text-sm text-mute">
+          Pode não ter sido salvo ainda ou você não tem acesso. Volte ao dashboard e tente de novo.
+        </p>
+        <Link href="/dashboard" className="mt-6 inline-block text-sm text-trail underline">
+          Ir para projetos
+        </Link>
+      </div>
+    );
+  }
   const current = project;
 
   function saveAll() {

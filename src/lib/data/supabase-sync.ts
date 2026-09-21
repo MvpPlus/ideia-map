@@ -3,6 +3,14 @@ import { createSeed } from "@/lib/data/seed";
 import type { DatabaseSnapshot, Session, User } from "@/lib/types";
 import type { MockAdapter } from "@/lib/data/mock-adapter";
 
+type SupabaseResult = { error: { message: string; code?: string } | null };
+
+export function assertSupabaseOk(result: SupabaseResult, table: string): void {
+  if (result.error) {
+    throw new Error(`Supabase (${table}): ${result.error.message}`);
+  }
+}
+
 function emptySnapshot(): DatabaseSnapshot {
   const seed = createSeed();
   return {
@@ -254,25 +262,31 @@ export async function flushSnapshotToSupabase(inner: MockAdapter): Promise<void>
   const userId = session.user.id;
   const projectIds = db.projects.filter((p) => p.user_id === userId).map((p) => p.id);
 
-  await client.from("profiles").upsert({
-    id: session.user.id,
-    email: session.user.email,
-    name: session.user.name,
-    role: session.user.role,
-    preferences: session.user.preferences,
-  });
+  assertSupabaseOk(
+    await client.from("profiles").upsert({
+      id: session.user.id,
+      email: session.user.email,
+      name: session.user.name,
+      role: session.user.role,
+      preferences: session.user.preferences,
+    }),
+    "profiles",
+  );
 
   if (db.projects.length) {
-    await client.from("projects").upsert(
-      db.projects.map((p) => ({
-        id: p.id,
-        user_id: p.user_id,
-        name: p.name,
-        description: p.description,
-        status: p.status,
-        is_archived: p.is_archived,
-        updated_at: p.updated_at,
-      })),
+    assertSupabaseOk(
+      await client.from("projects").upsert(
+        db.projects.map((p) => ({
+          id: p.id,
+          user_id: p.user_id,
+          name: p.name,
+          description: p.description,
+          status: p.status,
+          is_archived: p.is_archived,
+          updated_at: p.updated_at,
+        })),
+      ),
+      "projects",
     );
   }
 
@@ -282,7 +296,7 @@ export async function flushSnapshotToSupabase(inner: MockAdapter): Promise<void>
     idField = "id",
     scope?: { column: string; ids: string[] },
   ) => {
-    if (rows.length) await client.from(table).upsert(rows);
+    if (rows.length) assertSupabaseOk(await client.from(table).upsert(rows), table);
     if (scope && scope.ids.length) {
       const keep = new Set(rows.map((r) => String(r[idField])));
       const { data: existing } = await client.from(table).select("id").in(scope.column, scope.ids);
@@ -346,13 +360,16 @@ export async function flushSnapshotToSupabase(inner: MockAdapter): Promise<void>
 
   const credits = db.credit_transactions.filter((c) => c.user_id === userId);
   if (credits.length) {
-    await client.from("credit_transactions").upsert(credits);
+    assertSupabaseOk(await client.from("credit_transactions").upsert(credits), "credit_transactions");
   }
 
-  await client.from("ai_settings").upsert({
-    user_id: userId,
-    models: db.ai_settings.models,
-  });
+  assertSupabaseOk(
+    await client.from("ai_settings").upsert({
+      user_id: userId,
+      models: db.ai_settings.models,
+    }),
+    "ai_settings",
+  );
 
   if (session.user.role === "admin") {
     for (const plan of db.plans) {

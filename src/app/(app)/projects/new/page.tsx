@@ -6,8 +6,10 @@ import { Button } from "@/components/ui/button";
 import { Field, Input, Textarea } from "@/components/ui/input";
 import { requestAi } from "@/lib/ai/client";
 import type { GeneratedPlan } from "@/lib/ai/openrouter";
-import { dataRepository } from "@/lib/data";
+import { dataRepository, isSupabaseMode } from "@/lib/data";
+import { getSupabaseAdapter } from "@/lib/data/supabase-adapter";
 import { useAppStore } from "@/lib/store";
+import { useRouter } from "next/navigation";
 import { FormEvent, useState } from "react";
 
 export default function NewProjectPage() {
@@ -15,6 +17,7 @@ export default function NewProjectPage() {
   const db = useAppStore((s) => s.db);
   const refresh = useAppStore((s) => s.refresh);
   const toast = useAppStore((s) => s.toast);
+  const router = useRouter();
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [url, setUrl] = useState("");
@@ -42,9 +45,12 @@ export default function NewProjectPage() {
         referenceUrl: url,
         plan,
       });
+      if (isSupabaseMode()) {
+        await getSupabaseAdapter().persistNow();
+      }
       refresh();
       toast("Planejamento gerado pela OpenRouter.");
-      window.location.assign(`/projects/${project.id}/overview`);
+      router.push(`/projects/${project.id}/overview`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Não foi possível gerar o plano.");
       toast("A OpenRouter não gerou o projeto.");

@@ -24,6 +24,8 @@ Formato de entrada: **data · contexto · o que deu errado ou mudou · daqui pra
 
 - **2026-09-21 · chaves Supabase** · Dashboard migrou de anon/service role para publishable/secret. · Env: `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` + `SUPABASE_SECRET_KEY` na Vercel; fallback `NEXT_PUBLIC_SUPABASE_ANON_KEY` só transição. Secret reservada ao servidor; app no browser continua RLS + JWT.
 
+- **2026-09-21 · projeto sumindo online** · IA gerava e a tela ficava em branco. · `flushSnapshotToSupabase` era fire-and-forget + `window.location` recarregava antes do Postgres; corrigir com `persistNow()` antes de navegar e erros visíveis do Supabase.
+
 - **2026-09-17 · criar projeto** · Sem plano da IA, o mock ainda gera requisito + duas telas + versão 1 + débito de créditos. Com plano OpenRouter, requisitos e telas vêm do JSON validado.
 
 ## IA / OpenRouter

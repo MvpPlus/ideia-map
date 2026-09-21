@@ -22,6 +22,9 @@ Dado `DATA_SOURCE=supabase` e sessão válida, quando a app hidrata, então carr
 ### AC-4 Deploy
 Dado migration aplicada e env na Vercel, quando abre a URL de preview, então login/cadastro e criar projeto persistem no Postgres.
 
+### AC-5 Persistência antes de navegar
+Dado `DATA_SOURCE=supabase`, quando cria um projeto e a app navega para o overview, então o flush para o Postgres terminou com sucesso; se falhar, o usuário vê erro e o projeto continua listável após recarregar a página.
+
 ## Três etapas (operacional)
 
 1. **Supabase** — projeto, rodar migration, copiar URL + publishable key (+ secret key só na Vercel servidor), opcional: marcar admin em `profiles.role`.  

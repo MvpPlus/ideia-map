@@ -45,6 +45,7 @@ function blank(): DatabaseSnapshot {
 export class SupabaseAdapter implements DataRepository {
   private inner = MockAdapter.isolated(blank(), null);
   ready = false;
+  private flushTail: Promise<void> = Promise.resolve();
 
   async reload(): Promise<void> {
     const { snapshot, session } = await loadSnapshotFromSupabase();
@@ -59,8 +60,18 @@ export class SupabaseAdapter implements DataRepository {
   private mutate<T>(fn: () => T): T {
     this.guard();
     const result = fn();
-    void flushSnapshotToSupabase(this.inner);
+    this.scheduleFlush();
     return result;
+  }
+
+  private scheduleFlush(): void {
+    this.flushTail = this.flushTail.then(() => flushSnapshotToSupabase(this.inner));
+  }
+
+  /** AC-5: aguardar persistência antes de recarregar ou sair da página. */
+  async persistNow(): Promise<void> {
+    this.guard();
+    await this.flushTail;
   }
 
   getDb(): DatabaseSnapshot {
