@@ -5,7 +5,9 @@ Sem pagamento. Fora deste guia: Playwright, crawler autenticado, service role no
 ## Etapa 1 — Supabase
 
 1. Crie um projeto em [supabase.com](https://supabase.com) (região perto do público).
-2. **SQL Editor** → cole e execute `supabase/migrations/20250921120000_core_rls.sql`.
+2. **SQL Editor** → execute, nesta ordem:
+   - `supabase/migrations/20250921120000_core_rls.sql`
+   - `supabase/migrations/20250921193000_profiles_rls_sync.sql`
 3. **Authentication → Providers** → Email ligado (confirmação de e-mail pode ficar desligada em dev/preview se quiser entrar rápido).
 4. **Project Settings → API Keys** → copie:
    - Project URL → `NEXT_PUBLIC_SUPABASE_URL`

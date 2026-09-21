@@ -1,6 +1,7 @@
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 import { createSeed } from "@/lib/data/seed";
 import type { DatabaseSnapshot, Session, User } from "@/lib/types";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import type { MockAdapter } from "@/lib/data/mock-adapter";
 
 type SupabaseResult = { error: { message: string; code?: string } | null };
@@ -9,6 +10,34 @@ export function assertSupabaseOk(result: SupabaseResult, table: string): void {
   if (result.error) {
     throw new Error(`Supabase (${table}): ${result.error.message}`);
   }
+}
+
+/** AC-6: role não vai no patch — admin vem do Postgres, não do flush comum. */
+export function ownProfilePatch(user: Pick<User, "email" | "name" | "preferences">) {
+  return {
+    email: user.email,
+    name: user.name,
+    preferences: user.preferences,
+  };
+}
+
+export async function syncOwnProfileToSupabase(
+  client: SupabaseClient,
+  user: Pick<User, "id" | "email" | "name" | "preferences">,
+): Promise<void> {
+  const patch = ownProfilePatch(user);
+  const updated = await client.from("profiles").update(patch).eq("id", user.id).select("id");
+  assertSupabaseOk(updated, "profiles");
+  if ((updated.data ?? []).length > 0) return;
+
+  assertSupabaseOk(
+    await client.from("profiles").insert({
+      id: user.id,
+      ...patch,
+      role: "user",
+    }),
+    "profiles",
+  );
 }
 
 function emptySnapshot(): DatabaseSnapshot {
@@ -262,16 +291,7 @@ export async function flushSnapshotToSupabase(inner: MockAdapter): Promise<void>
   const userId = session.user.id;
   const projectIds = db.projects.filter((p) => p.user_id === userId).map((p) => p.id);
 
-  assertSupabaseOk(
-    await client.from("profiles").upsert({
-      id: session.user.id,
-      email: session.user.email,
-      name: session.user.name,
-      role: session.user.role,
-      preferences: session.user.preferences,
-    }),
-    "profiles",
-  );
+  await syncOwnProfileToSupabase(client, session.user);
 
   if (db.projects.length) {
     assertSupabaseOk(
@@ -376,13 +396,16 @@ export async function flushSnapshotToSupabase(inner: MockAdapter): Promise<void>
       await client.from("plans").upsert(plan);
     }
     for (const u of db.users) {
-      await client.from("profiles").upsert({
-        id: u.id,
-        email: u.email,
-        name: u.name,
-        role: u.role,
-        preferences: u.preferences,
-      });
+      if (u.id === session.user.id) continue;
+      assertSupabaseOk(
+        await client.from("profiles").update({
+          email: u.email,
+          name: u.name,
+          role: u.role,
+          preferences: u.preferences,
+        }).eq("id", u.id),
+        "profiles",
+      );
     }
   }
 

@@ -26,6 +26,8 @@ Formato de entrada: **data · contexto · o que deu errado ou mudou · daqui pra
 
 - **2026-09-21 · projeto sumindo online** · IA gerava e a tela ficava em branco. · `flushSnapshotToSupabase` era fire-and-forget + `window.location` recarregava antes do Postgres; corrigir com `persistNow()` antes de navegar e erros visíveis do Supabase.
 
+- **2026-09-21 · RLS profiles** · Flush fazia upsert com `role` sem policy de insert. · Migration `20250921193000_profiles_rls_sync.sql` + sync só update/insert bootstrap sem role no patch comum.
+
 - **2026-09-17 · criar projeto** · Sem plano da IA, o mock ainda gera requisito + duas telas + versão 1 + débito de créditos. Com plano OpenRouter, requisitos e telas vêm do JSON validado.
 
 ## IA / OpenRouter
