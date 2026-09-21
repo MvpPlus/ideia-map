@@ -116,7 +116,11 @@ export default function AnalysisPage() {
             Gerar análise
           </Button>
         </div>
-        {urlFetch?.error ? <p className="text-sm text-marco">{urlFetch.error}</p> : null}
+        {urlFetch?.error ? (
+          <p className="text-sm text-marco">
+            <span className="font-medium">Coleta URL:</span> {urlFetch.error}
+          </p>
+        ) : null}
         {urlFetch?.text ? <p className="text-xs text-mute">{urlFetch.text.slice(0, 280)}…</p> : null}
       </div>
       <div className="card max-w-2xl space-y-3 p-5">

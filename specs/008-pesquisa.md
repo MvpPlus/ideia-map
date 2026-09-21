@@ -28,4 +28,4 @@ Dado um projeto do dono, quando grava análise, então a leitura devolve as desc
 ### AC-5 Busca na web
 Dado nome e descrição do app, quando monta a query, então inclui o nome e um recorte da ideia (não fica vazia).
 
-A busca roda no servidor: Google Programmable Search se houver `GOOGLE_API_KEY` + `GOOGLE_CSE_ID`; senão DuckDuckGo HTML. Não raspa `google.com`. Os snippets alimentam análise e radar de mercado.
+A busca roda no servidor: Google Programmable Search se houver `GOOGLE_API_KEY` + `GOOGLE_CSE_ID`; senão DuckDuckGo HTML com fallback para a API JSON se o HTML retornar 403 (comum na Vercel). Não raspa `google.com`. Os snippets alimentam análise e radar de mercado.

@@ -1,4 +1,4 @@
-import { extractTextFromHtml } from "@/lib/ai/fetch-url";
+import { extractTextFromHtml, publicFetchHeaders } from "@/lib/ai/fetch-url";
 import { load } from "cheerio";
 
 export type WebHit = {
@@ -51,6 +51,46 @@ export function parseDuckDuckGoHtml(html: string): WebHit[] {
   return hits.slice(0, 8);
 }
 
+type DuckTopic =
+  | { Text?: string; FirstURL?: string }
+  | { Name?: string; Topics?: { Text?: string; FirstURL?: string }[] };
+
+export function parseDuckDuckGoJson(payload: {
+  AbstractText?: string;
+  AbstractURL?: string;
+  Heading?: string;
+  RelatedTopics?: DuckTopic[];
+}): WebHit[] {
+  const hits: WebHit[] = [];
+  const abstract = payload.AbstractText?.trim();
+  const abstractUrl = payload.AbstractURL?.trim();
+  if (abstract && abstractUrl?.startsWith("http")) {
+    hits.push({
+      title: payload.Heading?.trim() || "Resumo",
+      url: abstractUrl,
+      snippet: abstract.slice(0, 800),
+    });
+  }
+  for (const topic of payload.RelatedTopics ?? []) {
+    if ("Topics" in topic && topic.Topics) {
+      for (const sub of topic.Topics) {
+        const text = sub.Text?.trim();
+        const url = sub.FirstURL?.trim();
+        if (text && url?.startsWith("http")) {
+          hits.push({ title: text.slice(0, 120), url, snippet: text.slice(0, 800) });
+        }
+      }
+      continue;
+    }
+    const text = topic.Text?.trim();
+    const url = topic.FirstURL?.trim();
+    if (text && url?.startsWith("http")) {
+      hits.push({ title: text.slice(0, 120), url, snippet: text.slice(0, 800) });
+    }
+  }
+  return hits.slice(0, 8);
+}
+
 export function parseGoogleCse(payload: {
   items?: { title?: string; link?: string; snippet?: string }[];
 }): WebHit[] {
@@ -90,14 +130,7 @@ export async function searchTheWeb(
       }
       return { source: "google", hits: parseGoogleCse(payload) };
     }
-    const ddg = new URL("https://html.duckduckgo.com/html/");
-    ddg.searchParams.set("q", query);
-    const response = await fetchImpl(ddg.toString(), {
-      signal: controller.signal,
-      headers: { Accept: "text/html", "User-Agent": "IdeiaMap/0.1" },
-    });
-    if (!response.ok) throw new Error(`A busca na web recusou (${response.status}).`);
-    return { source: "duckduckgo", hits: parseDuckDuckGoHtml(await response.text()) };
+    return await searchDuckDuckGo(query, fetchImpl, controller.signal);
   } catch (err) {
     if (err instanceof Error && err.name === "AbortError") {
       throw new Error("A busca na web passou de 8 segundos.");
@@ -106,4 +139,51 @@ export async function searchTheWeb(
   } finally {
     clearTimeout(timer);
   }
+}
+
+async function searchDuckDuckGoApi(
+  query: string,
+  fetchImpl: typeof fetch,
+  signal: AbortSignal,
+): Promise<WebHit[]> {
+  const api = new URL("https://api.duckduckgo.com/");
+  api.searchParams.set("q", query);
+  api.searchParams.set("format", "json");
+  api.searchParams.set("no_html", "1");
+  api.searchParams.set("skip_disambig", "1");
+  const response = await fetchImpl(api.toString(), { signal, headers: publicFetchHeaders() });
+  if (!response.ok) {
+    throw new Error(`A busca na web recusou (${response.status}).`);
+  }
+  const payload = (await response.json()) as Parameters<typeof parseDuckDuckGoJson>[0];
+  return parseDuckDuckGoJson(payload);
+}
+
+async function searchDuckDuckGo(
+  query: string,
+  fetchImpl: typeof fetch,
+  signal: AbortSignal,
+): Promise<{ source: "duckduckgo"; hits: WebHit[] }> {
+  const ddg = new URL("https://html.duckduckgo.com/html/");
+  ddg.searchParams.set("q", query);
+  const response = await fetchImpl(ddg.toString(), {
+    signal,
+    headers: { ...publicFetchHeaders(), Accept: "text/html" },
+  });
+  if (response.ok) {
+    const hits = parseDuckDuckGoHtml(await response.text());
+    if (hits.length) return { source: "duckduckgo", hits };
+  }
+
+  const apiHits = await searchDuckDuckGoApi(query, fetchImpl, signal);
+  if (apiHits.length) return { source: "duckduckgo", hits: apiHits };
+
+  if (!response.ok) {
+    const hint =
+      response.status === 403
+        ? " Configure GOOGLE_API_KEY e GOOGLE_CSE_ID na Vercel para busca mais estável."
+        : "";
+    throw new Error(`A busca na web recusou (${response.status}).${hint}`);
+  }
+  throw new Error("A busca não devolveu resultados utilizáveis.");
 }
