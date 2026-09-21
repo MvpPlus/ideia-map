@@ -1,0 +1,18 @@
+---
+description: TDD — teste falhando, código mínimo, refactor; pirâmide de testes
+alwaysApply: true
+---
+
+# TDD
+
+Ciclo obrigatório para regra de negócio, adapter e fluxos de dados:
+
+1. **Red** — um teste que falha pela razão certa (`npm test -- <arquivo>`).
+2. **Green** — o mínimo em `src/` para passar.
+3. **Refactor** — limpe com a suíte verde.
+
+- AAA (`arrange / act / assert`). Um comportamento por teste.
+- Independentes: limpe `localStorage` e singletons no `beforeEach`.
+- Não teste implementação privada nem detalhes de CSS.
+- UI: teste o repositório/hooks primeiro; e2e só para o caminho feliz depois da spec estável.
+- Não declare pronto sem `npm test` verde.

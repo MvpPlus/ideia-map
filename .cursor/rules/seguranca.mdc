@@ -1,0 +1,14 @@
+---
+description: RLS, segredos Vercel/Supabase e fetch só no servidor
+alwaysApply: true
+---
+
+# Segurança (Vercel + Supabase)
+
+1. Tenant: cada linha de negócio tem `user_id` ou pertence a um `project_id` do dono. No Postgres futuro: RLS ligado + `force`; policy `authenticated` com `auth.uid() = user_id` (filhas com `exists` no projeto).
+2. Supabase: `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` no cliente; `SUPABASE_SECRET_KEY` só servidor — nunca `NEXT_PUBLIC_*` com secret/service role. Admin só com policy explícita de papel (RLS), não bypass no browser.
+3. Segredos (`OPENROUTER_API_KEY`, `GOOGLE_AI_STUDIO_API_KEY`) em `.env.local` / `vercel env` / Vault — nunca no bundle nem no `localStorage` do usuário.
+4. Fetch de URL só em Route Handler. Recusar localhost e IPs privados. Cheerio extrai texto; HTML bruto não vai para iframe.
+5. Briefings e scrape não precisam de crypto extra se RLS + sanitização XSS estiverem ok.
+
+Skill: `supabase-postgres-best-practices` (RLS) e env-vars da Vercel.

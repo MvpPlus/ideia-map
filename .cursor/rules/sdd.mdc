@@ -1,0 +1,13 @@
+---
+description: Spec-Driven Development — spec e critérios de aceite antes do código
+alwaysApply: true
+---
+
+# SDD
+
+1. Leia `AGENTS.md` e a spec em `specs/` que cobre o pedido. Se não houver spec, crie ou atualize uma em `specs/<id>-<slug>.md` antes de editar `src/`.
+2. Spec descreve comportamento observável (rotas, regras, erros), não implementação.
+3. Critérios de aceite em formato verificável: `Dado / Quando / Então`.
+4. Implementação e testes devem rastrear os IDs dos critérios (`AC-1`, `AC-2`).
+5. Mudou o comportamento? Atualize a spec no mesmo ciclo. Código sem spec correspondente não entra.
+6. Pedidos grandes: Plan Mode primeiro; só implemente depois do plano aprovado.

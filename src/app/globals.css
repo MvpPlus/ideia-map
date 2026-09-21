@@ -1,0 +1,79 @@
+@import "tailwindcss";
+
+:root {
+  --canvas: #0b0f17;
+  --ink: #f8fafc;
+  --paper: #1e293b;
+  --panel: #0f172a;
+  --trail: #6366f1;
+  --trail-strong: #4f46e5;
+  --marco: #f59e0b;
+  --line: rgba(148, 163, 184, 0.12);
+  --mute: #94a3b8;
+  --muted: #64748b;
+  --emerald: #10b981;
+  --lowest: #0a0e16;
+}
+
+@theme inline {
+  --font-sans: var(--font-inter);
+  --font-display: var(--font-outfit);
+  --color-canvas: var(--canvas);
+  --color-ink: var(--ink);
+  --color-paper: var(--paper);
+  --color-panel: var(--panel);
+  --color-trail: var(--trail);
+  --color-marco: var(--marco);
+  --color-line: var(--line);
+  --color-mute: var(--mute);
+  --color-emerald: var(--emerald);
+}
+
+html,
+body {
+  background: var(--canvas);
+  color: var(--ink);
+}
+
+body {
+  font-family: var(--font-inter), system-ui, sans-serif;
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.display {
+  font-family: var(--font-outfit), system-ui, sans-serif;
+  letter-spacing: -0.02em;
+}
+
+.card {
+  border-radius: 16px;
+  border: 1px solid var(--line);
+  background: var(--paper);
+}
+
+select {
+  color: var(--ink);
+  background-color: #0b0f17;
+}
+
+.glow-spot {
+  pointer-events: none;
+  position: absolute;
+  border-radius: 9999px;
+  filter: blur(120px);
+}
+
+*:focus-visible {
+  outline: 2px solid var(--trail);
+  outline-offset: 3px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

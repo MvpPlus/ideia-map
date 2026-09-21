@@ -1,0 +1,11 @@
+---
+description: Ler e atualizar o caderno de lições do IdeiaMap após erros e mudanças
+alwaysApply: true
+---
+
+# Lições aprendidas
+
+1. No início de trabalho de produto, leia `docs/licoes-aprendidas.md` além de `AGENTS.md` e da spec em `specs/`.
+2. Depois de bug, correção, mudança de regra ou pedido explícito do usuário, acrescente uma entrada no caderno **no mesmo ciclo** (não esperar o usuário pedir).
+3. Formato: data · contexto · o que deu errado ou mudou · daqui pra frente. Sem logs, chaves ou stack traces.
+4. Specs continuam sendo a fonte de comportamento (SDD/TDD). Se a lição virar regra permanente, promova para spec ou `AGENTS.md`; não infle esta regra `.mdc`.
