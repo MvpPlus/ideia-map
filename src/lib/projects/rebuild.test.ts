@@ -18,6 +18,29 @@ describe("specs/011-editar-projeto", () => {
     expect(REBUILD_CONFIRMATION).toMatch(/substitu/i);
   });
 
+  it("AC-5 Editar projeto pronto volta para rascunho", () => {
+    const adapter = new MockAdapter();
+    adapter.login("marina@estudio.dev", "mapa");
+    const project = adapter.createProject("user_marina", { name: "Feira", description: "Pedidos" });
+    adapter.saveVersion(project.id);
+    expect(adapter.getProject(project.id)?.status).toBe("ready");
+
+    adapter.reopenProjectAsDraft(project.id);
+
+    expect(adapter.getProject(project.id)?.status).toBe("draft");
+  });
+
+  it("AC-5 Projeto arquivado continua arquivado ao editar", () => {
+    const adapter = new MockAdapter();
+    adapter.login("marina@estudio.dev", "mapa");
+    const project = adapter.createProject("user_marina", { name: "Feira", description: "Pedidos" });
+    adapter.archiveProject(project.id);
+
+    adapter.reopenProjectAsDraft(project.id);
+
+    expect(adapter.getProject(project.id)?.status).toBe("archived");
+  });
+
   it("AC-3 Confirmar substitui o plano", () => {
     const adapter = new MockAdapter();
     adapter.login("marina@estudio.dev", "mapa");

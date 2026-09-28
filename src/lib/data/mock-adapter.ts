@@ -1,6 +1,9 @@
 import { FREE_MODELS, createSeed } from "@/lib/data/seed";
 import { buildWireframeHtml } from "@/lib/screens/wireframe";
+import type { DraftQuestion } from "@/lib/ai/interview";
 import type { GeneratedPlan } from "@/lib/ai/openrouter";
+import { ARTIFACT_KINDS, ARTIFACT_META, canGenerateArtifact, nextArtifactKind } from "@/lib/projects/artifacts";
+import { isProjectLocked } from "@/lib/projects/prd-gate";
 import type {
   CreateProjectInput,
   DataRepository,
@@ -8,14 +11,17 @@ import type {
 import type {
   AiSettings,
   AnalysisFinding,
+  ArtifactKind,
   ChatMessage,
   DataTable,
   DatabaseSnapshot,
   ExportRecord,
   ExportTarget,
+  InterviewQuestion,
   Plan,
   Project,
-  ProjectAnalysis,
+  ProjectArtifact,
+  ProjectPrd,
   Requirement,
   Screen,
   Session,
@@ -92,6 +98,8 @@ export class MockAdapter implements DataRepository {
     this.db.competitors ??= [];
     this.db.personas ??= [];
     this.db.data_models ??= [];
+    this.db.project_prds ??= [];
+    this.db.project_artifacts ??= [];
   }
 
   private ownedProject(projectId: string): Project {
@@ -217,34 +225,7 @@ export class MockAdapter implements DataRepository {
     };
     this.db.projects.unshift(project);
     if (input.plan) {
-      for (const req of input.plan.requirements) {
-        this.db.requirements.push({
-          id: uid("req"),
-          project_id: project.id,
-          title: req.title,
-          description: req.description,
-          priority: req.priority,
-        });
-      }
-      for (const screen of input.plan.screens) {
-        const components = screen.components.length
-          ? screen.components
-          : [{ name: "Conteúdo", actions: ["Ação principal"] }];
-        this.db.screens.push({
-          id: uid("scr"),
-          project_id: project.id,
-          name: screen.name,
-          route: screen.route,
-          description: screen.description,
-          components,
-          wireframe_html: screenHtml({
-            name: screen.name,
-            route: screen.route,
-            description: screen.description,
-            components,
-          }),
-        });
-      }
+      this.pushPlan(project.id, input.plan);
     } else {
     this.db.requirements.push({
       id: uid("req"),
@@ -300,6 +281,43 @@ export class MockAdapter implements DataRepository {
         ? "Planejamento gerado pela OpenRouter. Peça um ajuste ou priorize requisitos."
         : "Projeto criado. Peça para priorizar requisitos ou acrescentar uma tela.",
     });
+    this.recordCreation(project);
+    this.persist();
+    return project;
+  }
+
+  private pushPlan(projectId: string, plan: GeneratedPlan) {
+    for (const req of plan.requirements) {
+      this.db.requirements.push({
+        id: uid("req"),
+        project_id: projectId,
+        title: req.title,
+        description: req.description,
+        priority: req.priority,
+      });
+    }
+    for (const screen of plan.screens) {
+      const components = screen.components.length
+        ? screen.components
+        : [{ name: "Conteúdo", actions: ["Ação principal"] }];
+      this.db.screens.push({
+        id: uid("scr"),
+        project_id: projectId,
+        name: screen.name,
+        route: screen.route,
+        description: screen.description,
+        components,
+        wireframe_html: screenHtml({
+          name: screen.name,
+          route: screen.route,
+          description: screen.description,
+          components,
+        }),
+      });
+    }
+  }
+
+  private recordCreation(project: Project) {
     this.db.project_versions.push({
       id: uid("ver"),
       project_id: project.id,
@@ -313,14 +331,170 @@ export class MockAdapter implements DataRepository {
     });
     this.db.credit_transactions.unshift({
       id: uid("cred"),
-      user_id: userId,
+      user_id: project.user_id,
       operation: "Criar projeto",
       credits: 25,
       cost: 0.75,
       created_at: nowIso(),
     });
+  }
+
+  startProjectInterview(userId: string, input: Omit<CreateProjectInput, "plan">): Project {
+    const url = input.referenceUrl?.trim();
+    const project: Project = {
+      id: uid("proj"),
+      user_id: userId,
+      name: input.name.trim(),
+      description: [input.description.trim(), url ? `URL de referência: ${url}` : ""].filter(Boolean).join("\n\n"),
+      status: "draft",
+      is_archived: false,
+      updated_at: nowIso(),
+    };
+    this.db.projects.unshift(project);
+    this.db.project_prds.push({
+      id: uid("prd"),
+      project_id: project.id,
+      stage: "interview",
+      questions: [],
+      prd_markdown: "",
+      approved_at: null,
+      updated_at: nowIso(),
+    });
     this.persist();
     return project;
+  }
+
+  getProjectPrd(projectId: string): ProjectPrd | undefined {
+    this.ownedProject(projectId);
+    return this.db.project_prds.find((p) => p.project_id === projectId);
+  }
+
+  private requirePrd(projectId: string, stage?: ProjectPrd["stage"]): ProjectPrd {
+    const prd = this.getProjectPrd(projectId);
+    if (!prd) throw new Error("Este projeto não tem entrevista.");
+    if (stage && prd.stage !== stage) {
+      throw new Error(stage === "review" ? "O PRD precisa estar em revisão." : "A entrevista já foi encerrada.");
+    }
+    return prd;
+  }
+
+  private assertUnlocked(projectId: string) {
+    this.ownedProject(projectId);
+    const prd = this.db.project_prds.find((p) => p.project_id === projectId);
+    if (isProjectLocked(prd)) throw new Error("Aprove o PRD antes de gerar outros artefatos.");
+  }
+
+  addInterviewQuestion(projectId: string, draft: DraftQuestion): InterviewQuestion {
+    const prd = this.requirePrd(projectId, "interview");
+    if (prd.questions.some((q) => q.answer === null)) {
+      throw new Error("Já existe uma pergunta pendente.");
+    }
+    const question: InterviewQuestion = { ...draft, id: uid("q"), answer: null };
+    prd.questions.push(question);
+    prd.updated_at = nowIso();
+    this.persist();
+    return question;
+  }
+
+  answerInterviewQuestion(projectId: string, questionId: string, answer: string): ProjectPrd {
+    const prd = this.requirePrd(projectId, "interview");
+    const text = answer.trim();
+    if (!text) throw new Error("Escreva uma resposta ou pule a pergunta.");
+    const question = prd.questions.find((q) => q.id === questionId);
+    if (!question) throw new Error("Pergunta não encontrada.");
+    question.answer = text;
+    prd.updated_at = nowIso();
+    this.persist();
+    return prd;
+  }
+
+  savePrdDraft(projectId: string, markdown: string): ProjectPrd {
+    const prd = this.requirePrd(projectId);
+    if (prd.stage === "approved") throw new Error("O PRD já foi aprovado.");
+    prd.questions = prd.questions.filter((q) => q.answer !== null);
+    prd.prd_markdown = markdown.trim();
+    prd.stage = "review";
+    prd.updated_at = nowIso();
+    this.persist();
+    return prd;
+  }
+
+  reopenInterview(projectId: string): ProjectPrd {
+    const prd = this.requirePrd(projectId, "review");
+    prd.stage = "interview";
+    prd.updated_at = nowIso();
+    this.persist();
+    return prd;
+  }
+
+  approvePrd(projectId: string, plan: GeneratedPlan): Project {
+    const project = this.ownedProject(projectId);
+    const prd = this.requirePrd(projectId, "review");
+    if (!prd.prd_markdown) throw new Error("O PRD está vazio.");
+    prd.stage = "approved";
+    prd.approved_at = nowIso();
+    prd.updated_at = prd.approved_at;
+    this.pushPlan(projectId, plan);
+    this.db.chat_messages.push({
+      id: uid("chat"),
+      project_id: projectId,
+      context: "overview",
+      role: "assistant",
+      content: "PRD aprovado. Requisitos e telas saíram dele; peça ajustes por aqui.",
+    });
+    this.recordCreation(project);
+    project.updated_at = nowIso();
+    this.persist();
+    return project;
+  }
+
+  listArtifacts(projectId: string): ProjectArtifact[] {
+    this.ownedProject(projectId);
+    return ARTIFACT_KINDS.flatMap((kind) =>
+      this.db.project_artifacts.filter((a) => a.project_id === projectId && a.kind === kind),
+    );
+  }
+
+  private assertArtifactChain(projectId: string, kind: ArtifactKind): ProjectArtifact[] {
+    this.ownedProject(projectId);
+    const prd = this.db.project_prds.find((p) => p.project_id === projectId);
+    if (prd?.stage !== "approved") throw new Error("Aprove o PRD antes de gerar os documentos técnicos.");
+    const artifacts = this.listArtifacts(projectId);
+    if (!canGenerateArtifact(artifacts, kind)) {
+      const pending = nextArtifactKind(artifacts);
+      throw new Error(`Aprove o ${pending ? ARTIFACT_META[pending].label : "documento anterior"} primeiro.`);
+    }
+    return artifacts;
+  }
+
+  saveArtifactDraft(projectId: string, kind: ArtifactKind, markdown: string): ProjectArtifact {
+    const artifacts = this.assertArtifactChain(projectId, kind);
+    const text = markdown.trim();
+    if (!text) throw new Error("O documento está vazio.");
+    const now = nowIso();
+    let artifact = artifacts.find((a) => a.kind === kind);
+    if (artifact) {
+      Object.assign(artifact, { markdown: text, status: "draft", approved_at: null, updated_at: now });
+    } else {
+      artifact = { id: uid("doc"), project_id: projectId, kind, markdown: text, status: "draft", approved_at: null, updated_at: now };
+      this.db.project_artifacts.push(artifact);
+    }
+    const after = ARTIFACT_KINDS.slice(ARTIFACT_KINDS.indexOf(kind) + 1);
+    for (const later of artifacts.filter((a) => after.includes(a.kind) && a.status === "approved")) {
+      Object.assign(later, { status: "draft", approved_at: null, updated_at: now });
+    }
+    this.persist();
+    return artifact;
+  }
+
+  approveArtifact(projectId: string, kind: ArtifactKind): ProjectArtifact {
+    const artifact = this.assertArtifactChain(projectId, kind).find((a) => a.kind === kind);
+    if (!artifact) throw new Error(`Gere o ${ARTIFACT_META[kind].label} antes de aprovar.`);
+    artifact.status = "approved";
+    artifact.approved_at = nowIso();
+    artifact.updated_at = artifact.approved_at;
+    this.persist();
+    return artifact;
   }
 
   updateProject(
@@ -331,6 +505,16 @@ export class MockAdapter implements DataRepository {
     if (!project) throw new Error("Projeto não encontrado.");
     Object.assign(project, patch, { updated_at: nowIso() });
     this.persist();
+    return project;
+  }
+
+  reopenProjectAsDraft(id: string): Project {
+    const project = this.ownedProject(id);
+    if (project.status === "ready") {
+      project.status = "draft";
+      project.updated_at = nowIso();
+      this.persist();
+    }
     return project;
   }
 
@@ -351,34 +535,7 @@ export class MockAdapter implements DataRepository {
     this.db.personas = this.db.personas.filter((p) => p.project_id !== id);
     this.db.data_models = this.db.data_models.filter((m) => m.project_id !== id);
     this.db.chat_messages = this.db.chat_messages.filter((m) => m.project_id !== id);
-    for (const req of input.plan.requirements) {
-      this.db.requirements.push({
-        id: uid("req"),
-        project_id: id,
-        title: req.title,
-        description: req.description,
-        priority: req.priority,
-      });
-    }
-    for (const screen of input.plan.screens) {
-      const components = screen.components.length
-        ? screen.components
-        : [{ name: "Conteúdo", actions: ["Ação principal"] }];
-      this.db.screens.push({
-        id: uid("scr"),
-        project_id: id,
-        name: screen.name,
-        route: screen.route,
-        description: screen.description,
-        components,
-        wireframe_html: screenHtml({
-          name: screen.name,
-          route: screen.route,
-          description: screen.description,
-          components,
-        }),
-      });
-    }
+    this.pushPlan(id, input.plan);
     this.db.chat_messages.push({
       id: uid("chat"),
       project_id: id,
@@ -409,6 +566,13 @@ export class MockAdapter implements DataRepository {
     for (const screen of this.listScreens(id)) {
       this.db.screens.push({ ...screen, id: uid("scr"), project_id: copy.id });
     }
+    const prd = this.db.project_prds.find((p) => p.project_id === id);
+    if (prd) {
+      this.db.project_prds.push({ ...structuredClone(prd), id: uid("prd"), project_id: copy.id, updated_at: nowIso() });
+    }
+    for (const artifact of this.db.project_artifacts.filter((a) => a.project_id === id)) {
+      this.db.project_artifacts.push({ ...structuredClone(artifact), id: uid("doc"), project_id: copy.id });
+    }
     this.persist();
     return copy;
   }
@@ -429,6 +593,8 @@ export class MockAdapter implements DataRepository {
     this.db.competitors = this.db.competitors.filter((c) => c.project_id !== id);
     this.db.personas = this.db.personas.filter((p) => p.project_id !== id);
     this.db.data_models = this.db.data_models.filter((m) => m.project_id !== id);
+    this.db.project_prds = this.db.project_prds.filter((p) => p.project_id !== id);
+    this.db.project_artifacts = this.db.project_artifacts.filter((a) => a.project_id !== id);
     this.persist();
   }
 
@@ -533,6 +699,7 @@ export class MockAdapter implements DataRepository {
     projectId: string,
     input: { name: string; route: string; description: string },
   ): Screen {
+    this.assertUnlocked(projectId);
     const screen: Screen = {
       id: uid("scr"),
       project_id: projectId,
@@ -567,6 +734,7 @@ export class MockAdapter implements DataRepository {
   }
 
   generateExport(projectId: string, targets: ExportTarget[]): ExportRecord {
+    this.assertUnlocked(projectId);
     const record: ExportRecord = {
       id: uid("exp"),
       project_id: projectId,
@@ -630,7 +798,7 @@ export class MockAdapter implements DataRepository {
   }
 
   saveUrlFetch(projectId: string, input: { url: string; text: string; error: string | null }) {
-    this.ownedProject(projectId);
+    this.assertUnlocked(projectId);
     const row = {
       id: uid("fetch"),
       project_id: projectId,
@@ -651,7 +819,7 @@ export class MockAdapter implements DataRepository {
   }
 
   saveAnalysis(projectId: string, findings: AnalysisFinding[]) {
-    this.ownedProject(projectId);
+    this.assertUnlocked(projectId);
     this.db.analyses = this.db.analyses.filter((a) => a.project_id !== projectId);
     const row = { id: uid("an"), project_id: projectId, findings };
     this.db.analyses.push(row);
@@ -665,7 +833,7 @@ export class MockAdapter implements DataRepository {
   }
 
   saveCompetitors(projectId: string, items: { name: string; url: string; notes: string }[]) {
-    this.ownedProject(projectId);
+    this.assertUnlocked(projectId);
     this.db.competitors = this.db.competitors.filter((c) => c.project_id !== projectId);
     const rows = items.map((item) => ({ id: uid("cmp"), project_id: projectId, ...item }));
     this.db.competitors.push(...rows);
@@ -679,7 +847,7 @@ export class MockAdapter implements DataRepository {
   }
 
   savePersonas(projectId: string, items: { name: string; job: string; stories: string[]; acceptance: string[] }[]) {
-    this.ownedProject(projectId);
+    this.assertUnlocked(projectId);
     this.db.personas = this.db.personas.filter((p) => p.project_id !== projectId);
     const rows = items.map((item) => ({ id: uid("per"), project_id: projectId, ...item }));
     this.db.personas.push(...rows);
@@ -693,7 +861,7 @@ export class MockAdapter implements DataRepository {
   }
 
   saveDataModel(projectId: string, input: { tables: DataTable[]; notes: string }) {
-    this.ownedProject(projectId);
+    this.assertUnlocked(projectId);
     this.db.data_models = this.db.data_models.filter((m) => m.project_id !== projectId);
     const row = { id: uid("dm"), project_id: projectId, tables: input.tables, notes: input.notes };
     this.db.data_models.push(row);

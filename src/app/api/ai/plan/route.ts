@@ -1,4 +1,4 @@
-import { PLAN_SYSTEM, parsePlan, resolveModel } from "@/lib/ai/openrouter";
+import { PLAN_SYSTEM, parsePlan, planUserContent, resolveModel } from "@/lib/ai/openrouter";
 import { completeLlm } from "@/lib/ai/complete";
 import { NextResponse } from "next/server";
 
@@ -10,6 +10,7 @@ export async function POST(request: Request) {
       name?: string;
       description?: string;
       referenceUrl?: string;
+      prd?: string;
       model?: string;
     };
     const name = body.name?.trim() ?? "";
@@ -17,7 +18,6 @@ export async function POST(request: Request) {
     if (!name || !description) {
       return NextResponse.json({ error: "Informe nome e descrição." }, { status: 400 });
     }
-    const url = body.referenceUrl?.trim();
     const content = await completeLlm({
       model: resolveModel(body.model),
       purpose: "plan",
@@ -25,7 +25,12 @@ export async function POST(request: Request) {
         { role: "system", content: PLAN_SYSTEM },
         {
           role: "user",
-          content: `Nome: ${name}\nDescrição: ${description}${url ? `\nURL de referência (não crawleie; use só como contexto): ${url}` : ""}`,
+          content: planUserContent({
+            name,
+            description,
+            referenceUrl: body.referenceUrl?.trim(),
+            prd: body.prd,
+          }),
         },
       ],
     });

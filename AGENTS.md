@@ -29,5 +29,5 @@ Produto: transformar briefings em planejamento de software editável, depois exp
 
 ## Recorte
 
-Núcleo: auth, dashboard, novo projeto, overview, telas, export, perfil, admin, análise, competitivo, personas, banco (Cheerio + modelo Prompt).  
+Núcleo: auth, dashboard, novo projeto, trilha do projeto, menu lateral em todo o app (spec 017), entrevista → PRD, documentos técnicos em cadeia (TRD, fluxo, UI/UX, backend, plano), overview, telas, export, perfil, admin, análise, competitivo, personas, banco (Cheerio + modelo Prompt).  
 Adiado: Auth Supabase, Playwright, crawler autenticado, Stripe.

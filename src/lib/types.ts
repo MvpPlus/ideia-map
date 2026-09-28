@@ -216,6 +216,51 @@ export type DataModel = {
   notes: string;
 };
 
+export type InterviewCategory =
+  | "problema"
+  | "usuarios"
+  | "solucao"
+  | "escopo"
+  | "negocio"
+  | "ux"
+  | "tecnico"
+  | "riscos"
+  | "metricas";
+
+export type InterviewQuestion = {
+  id: string;
+  category: InterviewCategory;
+  question: string;
+  why: string;
+  options: string[];
+  recommended: string;
+  answer: string | null;
+};
+
+export type PrdStage = "interview" | "review" | "approved";
+
+export type ProjectPrd = {
+  id: string;
+  project_id: string;
+  stage: PrdStage;
+  questions: InterviewQuestion[];
+  prd_markdown: string;
+  approved_at: string | null;
+  updated_at: string;
+};
+
+export type ArtifactKind = "trd" | "flow" | "design" | "backend" | "plan";
+
+export type ProjectArtifact = {
+  id: string;
+  project_id: string;
+  kind: ArtifactKind;
+  markdown: string;
+  status: "draft" | "approved";
+  approved_at: string | null;
+  updated_at: string;
+};
+
 export type DatabaseSnapshot = {
   users: User[];
   plans: Plan[];
@@ -237,4 +282,6 @@ export type DatabaseSnapshot = {
   competitors: Competitor[];
   personas: Persona[];
   data_models: DataModel[];
+  project_prds: ProjectPrd[];
+  project_artifacts: ProjectArtifact[];
 };

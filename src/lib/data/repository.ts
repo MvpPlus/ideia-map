@@ -1,7 +1,9 @@
+import type { DraftQuestion } from "@/lib/ai/interview";
 import type { ChatReply, GeneratedPlan } from "@/lib/ai/openrouter";
 import type {
   AiSettings,
   AnalysisFinding,
+  ArtifactKind,
   ChatMessage,
   Competitor,
   DataModel,
@@ -9,11 +11,14 @@ import type {
   DatabaseSnapshot,
   ExportRecord,
   ExportTarget,
+  InterviewQuestion,
   OpenRouterModel,
   Persona,
   Plan,
   Project,
   ProjectAnalysis,
+  ProjectArtifact,
+  ProjectPrd,
   Requirement,
   Screen,
   Session,
@@ -38,7 +43,18 @@ export type DataRepository = {
   listProjects(userId: string): Project[];
   getProject(id: string): Project | undefined;
   createProject(userId: string, input: CreateProjectInput): Project;
+  startProjectInterview(userId: string, input: Omit<CreateProjectInput, "plan">): Project;
+  getProjectPrd(projectId: string): ProjectPrd | undefined;
+  addInterviewQuestion(projectId: string, draft: DraftQuestion): InterviewQuestion;
+  answerInterviewQuestion(projectId: string, questionId: string, answer: string): ProjectPrd;
+  savePrdDraft(projectId: string, markdown: string): ProjectPrd;
+  reopenInterview(projectId: string): ProjectPrd;
+  approvePrd(projectId: string, plan: GeneratedPlan): Project;
+  listArtifacts(projectId: string): ProjectArtifact[];
+  saveArtifactDraft(projectId: string, kind: ArtifactKind, markdown: string): ProjectArtifact;
+  approveArtifact(projectId: string, kind: ArtifactKind): ProjectArtifact;
   updateProject(id: string, patch: Partial<Pick<Project, "name" | "description" | "status" | "is_archived">>): Project;
+  reopenProjectAsDraft(id: string): Project;
   rebuildProjectFromPlan(
     id: string,
     input: { name: string; description: string; plan: GeneratedPlan },

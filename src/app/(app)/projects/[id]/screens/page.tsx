@@ -49,7 +49,7 @@ export default function ScreensPage() {
 
   return (
     <div className="min-w-0 overflow-x-hidden grid gap-0 lg:grid-cols-[260px_minmax(0,1fr)]">
-      <aside className="border-b border-line bg-paper lg:min-h-[calc(100vh-6.5rem)] lg:border-r lg:border-b-0">
+      <aside className="border-b border-line bg-paper lg:min-h-screen lg:border-r lg:border-b-0">
         <div className="flex items-center justify-between px-4 py-3">
           <h2 className="text-sm">Telas</h2>
           <Button variant="ghost" onClick={() => setCreating(true)}>

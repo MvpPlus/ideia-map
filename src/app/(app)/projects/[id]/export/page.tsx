@@ -1,13 +1,23 @@
 "use client";
 
+import { AiWaitOverlay } from "@/components/ai-wait/ai-wait-overlay";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { dataRepository } from "@/lib/data";
+import { dataRepository, isSupabaseMode } from "@/lib/data";
+import { getSupabaseAdapter } from "@/lib/data/supabase-adapter";
+import { buildExportFiles, exportTree, standalonePrompt } from "@/lib/export/package";
+import { ARTIFACT_KINDS, ARTIFACT_META, missingArtifactSteps } from "@/lib/projects/artifacts";
+import { requestArtifactMarkdown } from "@/lib/projects/request-artifact";
+import Link from "next/link";
 import { useAppStore, useProjectBundle } from "@/lib/store";
 import type { ExportTarget } from "@/lib/types";
 import JSZip from "jszip";
 import { useParams } from "next/navigation";
 import { useMemo, useState } from "react";
+
+async function persist() {
+  if (isSupabaseMode()) await getSupabaseAdapter().persistNow();
+}
 
 const TARGETS: { id: ExportTarget; label: string }[] = [
   { id: "claude-code", label: "Claude Code" },
@@ -17,33 +27,33 @@ const TARGETS: { id: ExportTarget; label: string }[] = [
   { id: "markdown", label: "Markdown genérico" },
 ];
 
-function treeFor(targets: ExportTarget[]) {
-  const files = ["README.md", "prd.md", "screens.md"];
-  if (targets.includes("claude-code")) files.push("CLAUDE.md");
-  if (targets.includes("cursor")) files.push(".cursor/rules/implement.md");
-  if (targets.includes("codex")) files.push("AGENTS.md");
-  if (targets.includes("antigravity")) files.push("ANTIGRAVITY.md");
-  if (targets.includes("markdown")) files.push("PROMPT.md");
-  return files;
-}
-
 export default function ExportPage() {
   const { id } = useParams<{ id: string }>();
-  const { project, requirements, screens, latestVersion, exports } = useProjectBundle(id);
+  const { project, requirements, screens, latestVersion, exports, prd, artifacts } = useProjectBundle(id);
+  const db = useAppStore((s) => s.db);
   const refresh = useAppStore((s) => s.refresh);
   const toast = useAppStore((s) => s.toast);
   const [targets, setTargets] = useState<ExportTarget[]>(["cursor", "markdown"]);
+  const [progress, setProgress] = useState("");
+  const [error, setError] = useState("");
   const last = exports[0];
   const stale = Boolean(last && last.version_number < latestVersion);
+  const hasPrd = prd?.stage === "approved";
+  const outside = hasPrd
+    ? ARTIFACT_KINDS.filter((kind) => artifacts.find((a) => a.kind === kind)?.status !== "approved").map(
+        (kind) => ARTIFACT_META[kind].label,
+      )
+    : [];
 
-  const files = useMemo(() => treeFor(targets), [targets]);
+  const files = useMemo(
+    () => (project ? exportTree({ project, requirements, screens, prd, artifacts, targets }) : []),
+    [project, requirements, screens, prd, artifacts, targets],
+  );
 
-  const prompt = useMemo(() => {
-    if (!project) return "";
-    return `Implemente o produto "${project.name}".\n\n${project.description}\n\nRequisitos:\n${requirements
-      .map((r) => `- ${r.title}: ${r.description}`)
-      .join("\n")}\n\nTelas:\n${screens.map((s) => `- ${s.name} (${s.route})`).join("\n")}\n`;
-  }, [project, requirements, screens]);
+  const prompt = useMemo(
+    () => (project ? standalonePrompt({ project, requirements, screens, prd, artifacts }) : ""),
+    [project, requirements, screens, prd, artifacts],
+  );
 
   function toggle(id: ExportTarget) {
     setTargets((current) =>
@@ -51,36 +61,67 @@ export default function ExportPage() {
     );
   }
 
-  async function generateZip(download: boolean) {
+  async function completeDocs(projectId: string): Promise<boolean> {
+    if (!prd || prd.stage !== "approved") return true;
+    const repo = dataRepository();
+    const steps = missingArtifactSteps(repo.listArtifacts(projectId));
+    for (const [index, step] of steps.entries()) {
+      const label = ARTIFACT_META[step.kind].label;
+      setProgress(`${step.generate ? "Gerando" : "Aprovando"} ${label} — ${index + 1} de ${steps.length}`);
+      try {
+        if (step.generate) {
+          const markdown = await requestArtifactMarkdown({
+            projectId,
+            kind: step.kind,
+            prd: prd.prd_markdown,
+            model: db?.ai_settings.models.prd,
+          });
+          repo.saveArtifactDraft(projectId, step.kind, markdown);
+        }
+        repo.approveArtifact(projectId, step.kind);
+        await persist();
+        refresh();
+      } catch (err) {
+        setError(`Não foi possível gerar o ${label}: ${err instanceof Error ? err.message : "erro desconhecido"}`);
+        return false;
+      }
+    }
+    return true;
+  }
+
+  async function generateZip(completeFirst: boolean) {
     if (!project || targets.length === 0) {
       toast("Selecione ao menos um destino.");
       return;
     }
-    const record = dataRepository().generateExport(project.id, targets);
+    setError("");
+    try {
+      if (completeFirst && !(await completeDocs(project.id))) return;
+    } finally {
+      setProgress("");
+    }
+    const repo = dataRepository();
+    const record = repo.generateExport(project.id, targets);
+    await persist();
     refresh();
     const zip = new JSZip();
-    zip.file("README.md", `# ${project.name}\n\n${project.description}\n`);
-    zip.file("prd.md", prompt);
-    zip.file(
-      "screens.md",
-      screens.map((s) => `## ${s.name}\nRota: ${s.route}\n${s.description}\n`).join("\n"),
-    );
-    for (const file of files) {
-      if (file === "README.md" || file === "prd.md" || file === "screens.md") continue;
-      zip.file(file, prompt);
-    }
-    if (download) {
-      const blob = await zip.generateAsync({ type: "blob" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `${project.name.toLowerCase().replace(/\s+/g, "-")}-ideiamap.zip`;
-      a.click();
-      URL.revokeObjectURL(url);
-      toast("ZIP baixado.");
-    } else {
-      toast(`Pacote gerado na versão ${record.version_number}.`);
-    }
+    const contents = buildExportFiles({
+      project,
+      requirements,
+      screens,
+      prd,
+      artifacts: hasPrd ? repo.listArtifacts(project.id) : [],
+      targets,
+    });
+    for (const [file, content] of Object.entries(contents)) zip.file(file, content);
+    const blob = await zip.generateAsync({ type: "blob" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${project.name.toLowerCase().replace(/\s+/g, "-")}-ideiamap.zip`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast(`Pacote da versão ${record.version_number} baixado.`);
   }
 
   if (!project) return null;
@@ -123,13 +164,37 @@ export default function ExportPage() {
         <h3 className="text-sm text-mute">Árvore que será gerada</h3>
         <ul className="mt-2 font-mono text-sm text-mute">
           {files.map((file) => (
-            <li key={file}>{file}</li>
+            <li key={file}>
+              {file}
+              {file === "prd.md" ? (
+                <span className="ml-2 font-sans text-xs">
+                  {hasPrd ? "— PRD aprovado na entrevista" : "— montado de requisitos e telas"}
+                </span>
+              ) : null}
+            </li>
           ))}
         </ul>
+        {outside.length ? (
+          <p className="mt-3 text-xs text-mute">
+            Faltam aprovar: {outside.join(", ")}. &ldquo;Gerar pacote&rdquo; gera os que faltam, aprova os em revisão e
+            baixa o ZIP completo; &ldquo;Download ZIP&rdquo; baixa só o que já está aprovado.{" "}
+            <Link href={`/projects/${project.id}/docs`} className="text-trail underline">
+              Revisar em Documentos
+            </Link>
+          </p>
+        ) : null}
       </section>
+      {error ? (
+        <div className="card border-marco/40 p-4">
+          <p className="text-sm text-marco">{error}</p>
+          <p className="mt-1 text-xs text-mute">Os documentos já gerados continuam aprovados. Clique em Gerar pacote para continuar.</p>
+        </div>
+      ) : null}
       <div className="flex flex-wrap gap-2">
-        <Button onClick={() => generateZip(false)}>Gerar pacote</Button>
-        <Button variant="ink" onClick={() => generateZip(true)}>
+        <Button onClick={() => void generateZip(true)} disabled={Boolean(progress)}>
+          Gerar pacote
+        </Button>
+        <Button variant="ink" onClick={() => void generateZip(false)} disabled={Boolean(progress)}>
           Download ZIP
         </Button>
         <Button
@@ -142,6 +207,7 @@ export default function ExportPage() {
           Copiar prompt inicial
         </Button>
       </div>
+      <AiWaitOverlay open={Boolean(progress)} title={progress} />
     </div>
   );
 }

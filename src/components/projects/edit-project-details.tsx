@@ -55,7 +55,7 @@ export function EditProjectDetails({
       toast("Planejamento refeito. Pesquisa anterior foi limpa.");
       setConfirmOpen(false);
       onClose();
-      window.location.assign(`/projects/${project.id}/overview`);
+      window.location.assign(`/projects/${project.id}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Não foi possível refazer o plano.");
       toast("A IA não refez o planejamento.");
@@ -67,14 +67,12 @@ export function EditProjectDetails({
   return (
     <>
       <form className="card mt-6 space-y-4 p-4" onSubmit={onSubmit}>
-        <p className="display text-xl">Editar detalhes</p>
-        <p className="text-sm text-mute">
-          Nome e descrição alimentam de novo o planejamento. Nada é gravado até você confirmar.
-        </p>
+        <p className="display text-xl">Informações iniciais</p>
+        <p className="text-sm text-mute">Nada é gravado até você confirmar.</p>
         <Field label="Nome do projeto">
           <Input value={name} onChange={(e) => setName(e.target.value)} required />
         </Field>
-        <Field label="Descrição">
+        <Field label="Ideia">
           <Textarea value={description} onChange={(e) => setDescription(e.target.value)} required />
         </Field>
         {error ? <p className="text-sm text-marco">{error}</p> : null}

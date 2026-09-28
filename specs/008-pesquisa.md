@@ -6,7 +6,7 @@ Fora: Playwright, crawler autenticado, diagrama ER pesado, Supabase real
 
 ## Contexto
 
-URL pública vira texto no servidor (8s). O modelo **Prompt** sintetiza os quatro artefatos. PRD continua no plano; Chat no overview.
+URL pública vira texto no servidor (8s). O modelo **Prompt** sintetiza os quatro artefatos. O PRD nasce da entrevista (`specs/014-entrevista-prd.md`) e o modelo PRD gera entrevista, documento e plano; Chat no overview. Estas telas só abrem depois do PRD aprovado.
 
 ## Critérios
 

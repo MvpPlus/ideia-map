@@ -8,6 +8,8 @@ Sem pagamento. Fora deste guia: Playwright, crawler autenticado, service role no
 2. **SQL Editor** → execute, nesta ordem:
    - `supabase/migrations/20250921120000_core_rls.sql`
    - `supabase/migrations/20250921193000_profiles_rls_sync.sql`
+   - `supabase/migrations/20250928120000_project_prds.sql`
+   - `supabase/migrations/20250929120000_project_artifacts.sql`
 3. **Authentication → Providers** → Email ligado (confirmação de e-mail pode ficar desligada em dev/preview se quiser entrar rápido).
 4. **Project Settings → API Keys** → copie:
    - Project URL → `NEXT_PUBLIC_SUPABASE_URL`

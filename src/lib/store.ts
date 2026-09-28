@@ -4,6 +4,7 @@ import { bootstrapDataSource, dataRepository, isSupabaseMode } from "@/lib/data"
 import { supabaseSignIn, supabaseSignOut, supabaseSignUp } from "@/lib/supabase/auth-client";
 import { getSupabaseAdapter } from "@/lib/data/supabase-adapter";
 import type { DataRepository } from "@/lib/data/repository";
+import { projectJourney } from "@/lib/projects/journey";
 import type {
   AiSettings,
   DatabaseSnapshot,
@@ -117,6 +118,8 @@ export function useProjectBundle(projectId: string) {
     const personas = db?.personas?.filter((p) => p.project_id === projectId) ?? [];
     const dataModels = db?.data_models?.filter((m) => m.project_id === projectId) ?? [];
     const fetches = db?.url_fetches?.filter((f) => f.project_id === projectId) ?? [];
+    const prd = db?.project_prds?.find((p) => p.project_id === projectId);
+    const artifacts = db?.project_artifacts?.filter((a) => a.project_id === projectId) ?? [];
     const latestVersion = versions.reduce((max, v) => Math.max(max, v.number), 0);
     return {
       project,
@@ -131,8 +134,15 @@ export function useProjectBundle(projectId: string) {
       personas,
       dataModel: dataModels[0],
       urlFetch: fetches.at(-1),
+      prd,
+      artifacts,
     };
   }, [db, projectId]);
+}
+
+export function useProjectJourney(projectId: string) {
+  const bundle = useProjectBundle(projectId);
+  return useMemo(() => projectJourney(bundle), [bundle]);
 }
 
 export function maskKey(key: string): string {

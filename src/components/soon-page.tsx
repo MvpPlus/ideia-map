@@ -16,7 +16,7 @@ export default function SoonPage({
       <div className="card max-w-xl p-8">
       <h2 className="display text-3xl lg:text-4xl">{title}</h2>
       <p className="mt-3 max-w-xl text-sm text-mute">{note}</p>
-      <Link href={`/projects/${id}/overview`} className="mt-6 inline-block text-sm text-trail underline">
+      <Link href={`/projects/${id}`} className="mt-6 inline-block text-sm text-trail underline">
         Voltar à visão geral
       </Link>
       </div>

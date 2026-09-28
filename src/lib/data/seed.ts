@@ -335,6 +335,8 @@ export function createSeed(): DatabaseSnapshot {
         notes: "RLS por assinante.",
       },
     ],
+    project_prds: [],
+    project_artifacts: [],
     audit_logs: [
       {
         id: "aud_1",

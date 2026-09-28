@@ -53,7 +53,7 @@ export default function DashboardPage() {
           </div>
           <Button onClick={() => router.push("/projects/new")}>Novo projeto</Button>
         </div>
-        <div className="sticky top-16 z-10 mt-6 bg-canvas/90 py-3 backdrop-blur-md">
+        <div className="sticky top-14 z-10 lg:top-0 mt-6 bg-canvas/90 py-3 backdrop-blur-md">
           <Input
             placeholder="Buscar por nome ou descrição"
             value={query}
@@ -71,7 +71,7 @@ export default function DashboardPage() {
                 key={project.id}
                 className="card relative grid grid-cols-[1fr_auto] items-center gap-3 px-4 py-4 transition hover:border-trail/50"
               >
-                <Link href={`/projects/${project.id}/overview`} className="min-w-0">
+                <Link href={`/projects/${project.id}`} className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
                     <p className="display text-xl">{project.name}</p>
                     <Badge tone={statusTone(project)}>
@@ -98,7 +98,7 @@ export default function DashboardPage() {
                       onClick={() =>
                         run(() => {
                           const copy = dataRepository().duplicateProject(project.id);
-                          router.push(`/projects/${copy.id}/overview`);
+                          router.push(`/projects/${copy.id}`);
                         }, "Projeto duplicado.")
                       }
                     >

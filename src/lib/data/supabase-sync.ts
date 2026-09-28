@@ -58,6 +58,8 @@ function emptySnapshot(): DatabaseSnapshot {
     competitors: [],
     personas: [],
     data_models: [],
+    project_prds: [],
+    project_artifacts: [],
     jobs: [],
     audit_logs: [],
     cost_entries: [],
@@ -148,7 +150,7 @@ export async function loadSnapshotFromSupabase(): Promise<{ snapshot: DatabaseSn
 
   const projectIds = base.projects.map((p) => p.id);
   if (projectIds.length) {
-    const [reqs, scr, chat, vers, exps, fetches, ans, cmp, per, dm] = await Promise.all([
+    const [reqs, scr, chat, vers, exps, fetches, ans, cmp, per, dm, prds, docs] = await Promise.all([
       client.from("requirements").select("*").in("project_id", projectIds),
       client.from("screens").select("*").in("project_id", projectIds),
       client.from("chat_messages").select("*").in("project_id", projectIds),
@@ -159,6 +161,8 @@ export async function loadSnapshotFromSupabase(): Promise<{ snapshot: DatabaseSn
       client.from("competitors").select("*").in("project_id", projectIds),
       client.from("personas").select("*").in("project_id", projectIds),
       client.from("data_models").select("*").in("project_id", projectIds),
+      client.from("project_prds").select("*").in("project_id", projectIds),
+      client.from("project_artifacts").select("*").in("project_id", projectIds),
     ]);
     base.requirements = (reqs.data ?? []).map((r) => ({
       id: r.id,
@@ -232,6 +236,24 @@ export async function loadSnapshotFromSupabase(): Promise<{ snapshot: DatabaseSn
       project_id: m.project_id,
       tables: m.tables ?? [],
       notes: m.notes,
+    }));
+    base.project_prds = (prds.data ?? []).map((p) => ({
+      id: p.id,
+      project_id: p.project_id,
+      stage: p.stage,
+      questions: p.questions ?? [],
+      prd_markdown: p.prd_markdown ?? "",
+      approved_at: p.approved_at,
+      updated_at: p.updated_at,
+    }));
+    base.project_artifacts = (docs.data ?? []).map((a) => ({
+      id: a.id,
+      project_id: a.project_id,
+      kind: a.kind,
+      markdown: a.markdown ?? "",
+      status: a.status,
+      approved_at: a.approved_at,
+      updated_at: a.updated_at,
     }));
   }
 
@@ -377,6 +399,12 @@ export async function flushSnapshotToSupabase(inner: MockAdapter): Promise<void>
     dm.map((m) => ({ id: m.id, project_id: m.project_id, tables: m.tables, notes: m.notes })),
     "id",
   );
+
+  const prds = db.project_prds.filter((p) => projectIds.includes(p.project_id));
+  await upsertOrphans("project_prds", prds.map((p) => ({ ...p })), "id");
+
+  const docs = db.project_artifacts.filter((a) => projectIds.includes(a.project_id));
+  await upsertOrphans("project_artifacts", docs.map((a) => ({ ...a })), "id");
 
   const credits = db.credit_transactions.filter((c) => c.user_id === userId);
   if (credits.length) {

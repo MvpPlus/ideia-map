@@ -18,6 +18,7 @@ Dado o e-mail `admin@ideiamap.dev`, quando autentica com senha não vazia, entã
 
 ### AC-3 Criar projeto gera artefatos
 Dado um usuário autenticado, quando cria um projeto com nome e descrição, então existem o projeto, ao menos um requisito, duas telas, versão 1 e um débito de créditos.
+Na UI, a criação passa antes pela entrevista e pelo PRD aprovado (`specs/014-entrevista-prd.md`); estes artefatos surgem na aprovação.
 
 ### AC-4 Duplicar
 Dado um projeto com requisitos, quando duplica, então a cópia tem outro `id`, nome com `(cópia)` e requisitos próprios.

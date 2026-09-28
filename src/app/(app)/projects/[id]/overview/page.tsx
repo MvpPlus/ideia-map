@@ -1,6 +1,6 @@
 "use client";
 
-import { EditProjectDetails } from "@/components/projects/edit-project-details";
+import { useOpenProjectEdit } from "@/components/projects/use-open-edit";
 import { AiWaitOverlay } from "@/components/ai-wait/ai-wait-overlay";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -25,7 +25,7 @@ export default function OverviewPage() {
   const [message, setMessage] = useState("");
   const [chatOpen, setChatOpen] = useState(false);
   const [chatBusy, setChatBusy] = useState(false);
-  const [editing, setEditing] = useState(false);
+  const openEdit = useOpenProjectEdit();
 
   useEffect(() => {
     setDrafts(requirements);
@@ -93,12 +93,9 @@ export default function OverviewPage() {
             </div>
             <h2 className="display mt-3 text-3xl lg:text-4xl">{current.name}</h2>
             <p className="mt-3 max-w-2xl text-sm leading-6 text-mute">{current.description}</p>
-            <Button className="mt-4" variant="ghost" onClick={() => setEditing(true)}>
-              Editar detalhes
+            <Button className="mt-4" variant="ghost" onClick={() => void openEdit(current.id)}>
+              Editar projeto
             </Button>
-            {editing ? (
-              <EditProjectDetails project={current} onClose={() => setEditing(false)} />
-            ) : null}
             <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
               {[
                 ["Requisitos", drafts.length],
@@ -188,7 +185,7 @@ export default function OverviewPage() {
 
       <button
         type="button"
-        className="fixed right-4 bottom-20 z-30 min-h-11 rounded-lg bg-gradient-to-r from-trail to-[#4F46E5] px-4 text-sm text-white lg:hidden"
+        className="fixed right-4 bottom-[max(1.25rem,env(safe-area-inset-bottom))] z-30 min-h-11 rounded-lg bg-gradient-to-r from-trail to-[#4F46E5] px-4 text-sm text-white lg:hidden"
         onClick={() => setChatOpen(true)}
       >
         Chat
@@ -197,7 +194,7 @@ export default function OverviewPage() {
       <aside
         className={`z-40 flex-col border-line bg-paper/90 p-4 pb-[max(1rem,env(safe-area-inset-bottom))] backdrop-blur-md ${
           chatOpen ? "fixed inset-0 flex" : "hidden"
-        } lg:fixed lg:top-16 lg:right-0 lg:bottom-0 lg:left-auto lg:flex lg:w-80 lg:border-l`}
+        } lg:fixed lg:top-0 lg:right-0 lg:bottom-0 lg:left-auto lg:flex lg:w-80 lg:border-l`}
       >
         <div className="flex items-center justify-between">
           <h3 className="display text-2xl">Chat</h3>

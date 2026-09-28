@@ -20,4 +20,7 @@ Dado o diálogo aberto, quando o usuário cancela, então nome, descrição, req
 Dado um projeto com requisitos e telas, quando confirma a edição com um plano novo, então nome e descrição atualizam, requisitos e telas passam a ser os do plano, e a análise, o radar, as personas, o modelo de banco e as coletas de URL desse projeto desaparecem.
 
 ### AC-4 Onde editar
-Dado o dashboard ou o overview, quando o usuário procura editar detalhes, então há **Editar detalhes** (dashboard: menu Opções; overview: botão visível junto ao título).
+Dado o dashboard ou o projeto, quando o usuário procura editar detalhes, então há **Editar detalhes** no menu Opções do dashboard e **Editar projeto** no menu lateral do projeto (acima da Trilha) e junto ao título em Planejar; os dois do projeto levam a `/projects/<id>/edit`, com as informações iniciais (nome e ideia). Com o PRD ainda não aprovado, **Editar projeto** fica bloqueado (a ideia se ajusta na entrevista).
+
+### AC-5 Editar volta para rascunho
+Dado um projeto pronto, quando o usuário toca em **Editar projeto**, então o status do projeto passa a rascunho antes de abrir a tela de edição. Projeto arquivado continua arquivado.

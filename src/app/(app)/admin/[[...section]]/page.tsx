@@ -4,27 +4,20 @@ import { AppShell } from "@/components/shell/app-shell";
 import { Button } from "@/components/ui/button";
 import { Field, fieldClass, Input, Select, Textarea } from "@/components/ui/input";
 import { catalogLabel, optionsForSlot } from "@/lib/ai/model-options";
+import { adminSection } from "@/lib/nav/app-nav";
+import { useParams } from "next/navigation";
 import { dataRepository } from "@/lib/data";
 import { useAppStore } from "@/lib/store";
 import type { AiSettings, Plan, PromptTemplate, User } from "@/lib/types";
 import { formatDate } from "@/lib/utils";
 import { useEffect, useState } from "react";
 
-const tabs = [
-  "Usuários",
-  "Planos",
-  "Jobs",
-  "Templates",
-  "Auditoria",
-  "Custos",
-  "Consumo",
-  "OpenRouter",
-] as const;
-
 export default function AdminPage() {
   const session = useAppStore((s) => s.session);
   const db = useAppStore((s) => s.db);
-  const [tab, setTab] = useState<(typeof tabs)[number]>("OpenRouter");
+  const params = useParams<{ section?: string[] }>();
+  const section = adminSection(params.section?.[0]);
+  const tab = section.slug;
 
   useEffect(() => {
     if (session && session.user.role !== "admin") {
@@ -38,29 +31,17 @@ export default function AdminPage() {
 
   return (
     <AppShell>
-      <div className="py-2">
-        <h1 className="display text-3xl lg:text-4xl">Administração</h1>
-        <div className="mt-6 flex flex-nowrap gap-1 overflow-x-auto border-b border-line">
-          {tabs.map((item) => (
-            <button
-              key={item}
-              type="button"
-              className={`min-h-11 shrink-0 px-3 py-2 text-sm ${tab === item ? "border-b-2 border-trail" : "text-mute"}`}
-              onClick={() => setTab(item)}
-            >
-              {item}
-            </button>
-          ))}
-        </div>
+      <div className="max-w-5xl">
+        <h1 className="display text-3xl lg:text-4xl">{section.label}</h1>
         <div className="mt-6">
-          {tab === "Usuários" ? <UsersPanel users={db.users} /> : null}
-          {tab === "Planos" ? <PlansPanel plans={db.plans} /> : null}
-          {tab === "Jobs" ? <JobsPanel /> : null}
-          {tab === "Templates" ? <TemplatesPanel templates={db.prompt_templates} /> : null}
-          {tab === "Auditoria" ? <AuditPanel /> : null}
-          {tab === "Custos" ? <CostsPanel /> : null}
-          {tab === "Consumo" ? <UsagePanel /> : null}
-          {tab === "OpenRouter" ? <OpenRouterPanel settings={db.ai_settings} /> : null}
+          {tab === "usuarios" ? <UsersPanel users={db.users} /> : null}
+          {tab === "planos" ? <PlansPanel plans={db.plans} /> : null}
+          {tab === "jobs" ? <JobsPanel /> : null}
+          {tab === "templates" ? <TemplatesPanel templates={db.prompt_templates} /> : null}
+          {tab === "auditoria" ? <AuditPanel /> : null}
+          {tab === "custos" ? <CostsPanel /> : null}
+          {tab === "consumo" ? <UsagePanel /> : null}
+          {tab === "openrouter" ? <OpenRouterPanel settings={db.ai_settings} /> : null}
         </div>
       </div>
     </AppShell>
@@ -260,6 +241,13 @@ function CostsPanel() {
 
 const PURPOSE_LABEL: Record<string, string> = {
   plan: "Planejamento",
+  interview: "Entrevista",
+  prd: "PRD",
+  "doc-trd": "TRD",
+  "doc-flow": "Fluxo do sistema",
+  "doc-design": "UI/UX Design",
+  "doc-backend": "Esquema backend",
+  "doc-plan": "Plano de implementação",
   chat: "Chat",
   analysis: "Análise",
   competitive: "Radar de mercado",

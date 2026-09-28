@@ -17,7 +17,7 @@ Dado um usuário autenticado em viewport abaixo de `lg`, quando abre o Menu, ent
 Dado o trilho em `lg+`, então Sair permanece visível sem abrir menu.
 
 ### AC-3 Menu do projeto
-Dado o workspace em viewport abaixo de `lg`, quando abre o Menu, então vê as seções (incluindo em breve) e Fechar projeto, sem depender de scroll horizontal para achar a seção ativa.
+Dado o workspace em viewport abaixo de `lg`, quando abre o Menu, então vê as seções e Projetos numa gaveta lateral, sem depender de scroll horizontal para achar a seção ativa (detalhes em `specs/016-trilha-projeto.md`).
 
 ### AC-4 Chat mobile
 Dado o overview no telefone, quando toca em Chat, então o painel ocupa a tela em coluna, com Fechar visível, e o FAB não cobre os toasts.

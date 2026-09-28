@@ -2,10 +2,12 @@ import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 import { MockAdapter } from "@/lib/data/mock-adapter";
 import type { CreateProjectInput, DataRepository } from "@/lib/data/repository";
 import { flushSnapshotToSupabase, loadSnapshotFromSupabase } from "@/lib/data/supabase-sync";
+import type { DraftQuestion } from "@/lib/ai/interview";
 import type { ChatReply, GeneratedPlan } from "@/lib/ai/openrouter";
 import type {
   AiSettings,
   AnalysisFinding,
+  ArtifactKind,
   DatabaseSnapshot,
   ExportTarget,
   Plan,
@@ -35,6 +37,8 @@ function blank(): DatabaseSnapshot {
     competitors: [],
     personas: [],
     data_models: [],
+    project_prds: [],
+    project_artifacts: [],
     jobs: [],
     audit_logs: [],
     cost_entries: [],
@@ -116,8 +120,54 @@ export class SupabaseAdapter implements DataRepository {
     return this.mutate(() => this.inner.createProject(userId, input));
   }
 
+  startProjectInterview(userId: string, input: Omit<CreateProjectInput, "plan">) {
+    return this.mutate(() => this.inner.startProjectInterview(userId, input));
+  }
+
+  getProjectPrd(projectId: string) {
+    this.guard();
+    return this.inner.getProjectPrd(projectId);
+  }
+
+  addInterviewQuestion(projectId: string, draft: DraftQuestion) {
+    return this.mutate(() => this.inner.addInterviewQuestion(projectId, draft));
+  }
+
+  answerInterviewQuestion(projectId: string, questionId: string, answer: string) {
+    return this.mutate(() => this.inner.answerInterviewQuestion(projectId, questionId, answer));
+  }
+
+  savePrdDraft(projectId: string, markdown: string) {
+    return this.mutate(() => this.inner.savePrdDraft(projectId, markdown));
+  }
+
+  reopenInterview(projectId: string) {
+    return this.mutate(() => this.inner.reopenInterview(projectId));
+  }
+
+  approvePrd(projectId: string, plan: GeneratedPlan) {
+    return this.mutate(() => this.inner.approvePrd(projectId, plan));
+  }
+
+  listArtifacts(projectId: string) {
+    this.guard();
+    return this.inner.listArtifacts(projectId);
+  }
+
+  saveArtifactDraft(projectId: string, kind: ArtifactKind, markdown: string) {
+    return this.mutate(() => this.inner.saveArtifactDraft(projectId, kind, markdown));
+  }
+
+  approveArtifact(projectId: string, kind: ArtifactKind) {
+    return this.mutate(() => this.inner.approveArtifact(projectId, kind));
+  }
+
   updateProject(id: string, patch: Partial<Pick<Project, "name" | "description" | "status" | "is_archived">>) {
     return this.mutate(() => this.inner.updateProject(id, patch));
+  }
+
+  reopenProjectAsDraft(id: string) {
+    return this.mutate(() => this.inner.reopenProjectAsDraft(id));
   }
 
   rebuildProjectFromPlan(id: string, input: { name: string; description: string; plan: GeneratedPlan }) {

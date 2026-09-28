@@ -1,3 +1,4 @@
+import { extractJson } from "@/lib/ai/json";
 import { isFreeModel } from "@/lib/ai/model-options";
 import { loadOpenRouterKey } from "@/lib/ai/persist-env";
 import { tokensFromText, type LlmCompletion } from "@/lib/ai/usage";
@@ -30,21 +31,12 @@ export type ChatReply = {
   requirement: PlanRequirement | null;
 };
 
+export { extractJson };
+
 export const OPENROUTER_CHAT_URL = "https://openrouter.ai/api/v1/chat/completions";
 export const OPENROUTER_MODELS_URL = "https://openrouter.ai/api/v1/models";
 
 const PRIORITIES = new Set(["alta", "média", "baixa"]);
-
-export function extractJson(text: string): unknown {
-  const trimmed = text.trim();
-  const fence = trimmed.match(/```(?:json)?\s*([\s\S]*?)```/);
-  const raw = fence ? fence[1].trim() : trimmed;
-  try {
-    return JSON.parse(raw);
-  } catch {
-    throw new Error("A resposta da IA não veio em JSON válido.");
-  }
-}
 
 function asPriority(value: unknown): PlanRequirement["priority"] {
   const text = String(value ?? "média");
@@ -293,7 +285,22 @@ export async function listModels(opts: {
 
 export const PLAN_SYSTEM = `Você é o planejador do IdeiaMap. Responda APENAS um JSON com:
 {"requirements":[{"title":"","description":"","priority":"alta|média|baixa"}],"screens":[{"name":"","route":"/","description":"","components":[{"name":"","actions":[""]}]}]}
-Escreva em português. Pelo menos 3 requisitos e 3 telas. Rotas no estilo App Router. Sem markdown.`;
+Escreva em português. Pelo menos 3 requisitos e 3 telas. Rotas no estilo App Router. Sem markdown.
+Se vier um PRD aprovado, ele manda: requisitos saem das funcionalidades (P0 = alta, P1 = média, P2 = baixa) e as telas cobrem os fluxos principais.`;
+
+export function planUserContent(input: {
+  name: string;
+  description: string;
+  referenceUrl?: string;
+  prd?: string;
+}): string {
+  const lines = [`Nome: ${input.name}`, `Descrição: ${input.description}`];
+  if (input.referenceUrl) {
+    lines.push(`URL de referência (não crawleie; use só como contexto): ${input.referenceUrl}`);
+  }
+  if (input.prd?.trim()) lines.push("", "PRD aprovado:", input.prd.trim());
+  return lines.join("\n");
+}
 
 export const CHAT_SYSTEM = `Você refina um planejamento de software no IdeiaMap. Responda APENAS JSON:
 {"reply":"texto curto em português","requirement":null}
