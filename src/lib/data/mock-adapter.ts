@@ -120,9 +120,9 @@ export class MockAdapter implements DataRepository {
     if (!fake && this.db.ai_settings.openrouter_api_key === "") return;
     if (fake) {
       this.db.ai_settings.models = {
-        prompt: "openai/gpt-4o-mini",
-        prd: "openai/gpt-4o-mini",
-        chat: "openai/gpt-4o-mini",
+        prompt: "openrouter/free",
+        prd: "openrouter/free",
+        chat: "openrouter/free",
       };
     }
     this.db.ai_settings.openrouter_api_key = "";

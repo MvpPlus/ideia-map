@@ -42,6 +42,8 @@ Formato de entrada: **data · contexto · o que deu errado ou mudou · daqui pra
 
 - **2026-09-28 · fallback pago da OpenRouter** · O uso mostrou `openai/gpt-4o-mini` respondendo no lugar do `:free` configurado: a OpenRouter cai para outros modelos da lista `models` quando o primeiro falha ou está lotado. · Ao investigar formato ou custo, conferir no Consumo qual modelo respondeu de fato; não atribuir o comportamento ao modelo configurado sem olhar.
 
+- **2026-09-28 · fallback só gratuito** · Decisão do usuário: evitar custo inesperado. O padrão da cadeia era todo pago e o `z-ai/glm-5.2:free` configurado saiu da lista de gratuitos, então toda chamada caía no `gpt-4o-mini`. · Fallback aceita só `:free` e o roteador `openrouter/free` (primeiro da cadeia padrão, sobrevive a modelo gratuito que some); pago só como principal escolhido no admin. Padrão sem modelo = `openrouter/free` (spec 005 AC-10; migration `20250930120000_ai_settings_free_default.sql`). Modelo gratuito some da OpenRouter sem aviso: revisar a escolha no admin quando o Consumo mostrar outro modelo respondendo.
+
 - **2026-09-19 · frases de espera** · As 5 linhas se repetiam. · Overlay embaralha ~30 frases no tom unicórnio/briefing a cada geração.
 
 - **2026-09-28 · entrevista antes do plano** · Planejamento saía direto do briefing, raso. · Novo projeto passa por entrevista (analista sênior, uma pergunta por vez com recomendação) → PRD → aprovação; só então requisitos e telas. Gate no repositório e na UI. Spec `014-entrevista-prd`.
@@ -58,7 +60,7 @@ Formato de entrada: **data · contexto · o que deu errado ou mudou · daqui pra
 
 - **2026-09-28 · só PRD não basta** · A auditoria mostrou que o app cobria o PRD, mas não TRD, fluxo, UI/UX, backend nem plano de implementação (havia só pedaços soltos, sem ligação com o PRD). · Cadeia de documentos a partir do PRD aprovado, com revisão e aprovação em cada etapa, todos na exportação (spec 015). Novo documento de produto entra na cadeia e no export, não como página solta.
 
-- **2026-09-28 · exportar sem documentos** · Quem ia direto para Exportar baixava um pacote sem TRD, fluxo, UI/UX, backend e plano. · "Gerar pacote" completa a cadeia (gera os que faltam, aprova os em revisão, mostra "Gerando X — n de N") e baixa o ZIP; "Download ZIP" baixa só o aprovado. Geração de documento compartilhada em `src/lib/projects/request-artifact.ts` (spec 015 AC-8).
+- **2026-09-28 · exportar sem documentos** · Quem ia direto para Exportar baixava um pacote sem TRD, fluxo, UI/UX, backend e plano. · "Gerar pacote" completa a cadeia (gera os que faltam, aprova os em revisão, mostra "Gerando X — n de N") e baixa o ZIP; "Download ZIP" baixa só o aprovado. Geração de documento compartilhada em `src/lib/projects/request-artifact.ts` (spec 015 AC-8). Usuário confirmou: aprovar automaticamente os em revisão é o comportamento desejado.
 
 - **2026-09-28 · Mermaid de modelo gratuito** · O fluxo veio com `-->| "texto" |` (espaços em volta das aspas) e o diagrama não renderizava. `mermaid.parse` no Node não serve de validador (precisa de DOM). · Prompt com regras de sintaxe; normalização determinística no servidor; validação no navegador antes de salvar, com até 2 pedidos de correção; visualização mostra o código e um aviso se ainda falhar.
 

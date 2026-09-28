@@ -96,9 +96,16 @@ export function serverApiKey(): string {
 export function resolveModel(requested?: string): string {
   const candidate = requested?.trim() ?? "";
   if (!candidate || candidate.startsWith("openrouter/free-")) {
-    return process.env.OPENROUTER_MODEL?.trim() || "openai/gpt-4o-mini";
+    return process.env.OPENROUTER_MODEL?.trim() || FREE_ROUTER_MODEL;
   }
   return candidate;
+}
+
+export const FREE_ROUTER_MODEL = "openrouter/free";
+
+export function isFreeRouteModel(id: string): boolean {
+  const model = id.trim();
+  return model === FREE_ROUTER_MODEL || model.endsWith(":free");
 }
 
 export function serverModel(fallback?: string): string {
@@ -107,17 +114,16 @@ export function serverModel(fallback?: string): string {
 
 export const OPENROUTER_MODELS_ARRAY_MAX = 3;
 export const DEFAULT_ROUTE_MODELS = [
-  "openai/gpt-4o-mini",
-  "google/gemini-2.0-flash-001",
-  "anthropic/claude-3.5-haiku",
-  "meta-llama/llama-3.3-70b-instruct",
-  "qwen/qwen-2.5-72b-instruct",
+  FREE_ROUTER_MODEL,
+  "google/gemma-4-31b-it:free",
+  "qwen/qwen3.8-27b:free",
+  "nvidia/nemotron-3-super-120b-a12b:free",
 ] as const;
 
 export function defaultFallbackModels(): string[] {
   const fromEnv = process.env.OPENROUTER_FALLBACK_MODELS?.split(",")
     .map((id) => id.trim())
-    .filter(Boolean);
+    .filter(isFreeRouteModel);
   if (fromEnv?.length) return fromEnv.slice(0, 5);
   const single = process.env.OPENROUTER_FALLBACK_MODEL?.trim();
   if (single) {
@@ -134,9 +140,10 @@ export function defaultFallbackModels(): string[] {
 export function routeModelChain(primary: string, extra: string[] = defaultFallbackModels()): string[] {
   const seen = new Set<string>();
   const chain: string[] = [];
-  for (const id of [primary, ...extra]) {
+  for (const [index, id] of [primary, ...extra].entries()) {
     const model = id.trim();
     if (!model || seen.has(model)) continue;
+    if (index > 0 && !isFreeRouteModel(model)) continue;
     seen.add(model);
     chain.push(model);
     if (chain.length === 5) break;

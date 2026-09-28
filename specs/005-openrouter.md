@@ -31,4 +31,7 @@ Dado um 502 genérico `Provider returned error` com `response_format` JSON, quan
 ### AC-9 Roteamento
 Dado um modelo que falha com rate-limit mesmo sem JSON, quando completa o chat, então tenta os próximos da cadeia (até 5 modelos no cliente). No POST, o array `models` da OpenRouter tem no máximo 3 IDs.
 
+### AC-10 Fallback só gratuito
+Dado um modelo principal (gratuito ou pago escolhido no admin), quando monta a cadeia de fallback — padrão, `OPENROUTER_FALLBACK_MODELS` ou `fallbacks` da chamada —, então só entram modelos gratuitos (`:free` ou o roteador `openrouter/free`); modelos pagos da lista são descartados. Sem modelo configurado, o padrão é `OPENROUTER_MODEL` ou `openrouter/free` — nunca um modelo pago implícito.
+
 

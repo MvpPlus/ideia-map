@@ -1,4 +1,11 @@
-import { completeChat, parseChatReply, parsePlan, resolveModel, routeModelChain } from "@/lib/ai/openrouter";
+import {
+  completeChat,
+  isFreeRouteModel,
+  parseChatReply,
+  parsePlan,
+  resolveModel,
+  routeModelChain,
+} from "@/lib/ai/openrouter";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 describe("specs/005-openrouter", () => {
@@ -117,12 +124,12 @@ describe("specs/005-openrouter", () => {
       model: "z-ai/glm-5.2:free",
       messages: [{ role: "user", content: "oi" }],
       fetchImpl,
-      fallbacks: ["openai/gpt-4o-mini"],
+      fallbacks: ["google/gemma-4-31b-it:free"],
     });
     expect(text).toContain("routed");
     expect(fetchImpl).toHaveBeenCalledTimes(3);
     const third = JSON.parse(String((fetchImpl.mock.calls[2] as [string, RequestInit])[1].body));
-    expect(third.model).toBe("openai/gpt-4o-mini");
+    expect(third.model).toBe("google/gemma-4-31b-it:free");
     const chain = routeModelChain("z-ai/glm-5.2:free");
     expect(chain[0]).toBe("z-ai/glm-5.2:free");
     expect(chain.length).toBe(5);
@@ -131,7 +138,41 @@ describe("specs/005-openrouter", () => {
   });
 
   it("ignora modelo mock antigo", () => {
-    expect(resolveModel("openrouter/free-chat")).toBe("openai/gpt-4o-mini");
+    expect(resolveModel("openrouter/free-chat")).toBe("openrouter/free");
     expect(resolveModel("anthropic/claude-3.5-sonnet")).toBe("anthropic/claude-3.5-sonnet");
+  });
+
+  it("AC-10 Cadeia padrão só com modelos gratuitos", () => {
+    const chain = routeModelChain("z-ai/glm-5.2:free");
+    expect(chain.slice(1).every(isFreeRouteModel)).toBe(true);
+  });
+
+  it("AC-10 Principal pago mantido, fallbacks pagos descartados", () => {
+    const chain = routeModelChain("openai/gpt-4o-mini", [
+      "anthropic/claude-3.5-haiku",
+      "qwen/qwen3.8-27b:free",
+      "openrouter/free",
+    ]);
+    expect(chain).toEqual(["openai/gpt-4o-mini", "qwen/qwen3.8-27b:free", "openrouter/free"]);
+  });
+
+  it("AC-10 Sem modelo configurado, padrão gratuito", () => {
+    expect(resolveModel()).toBe("openrouter/free");
+  });
+
+  it("AC-10 Array models do POST sem modelo pago", async () => {
+    const fetchImpl = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ choices: [{ message: { content: '{"ok":true}' } }] }),
+    });
+    await completeChat({
+      apiKey: "sk-test",
+      model: "qwen/qwen3.8-27b:free",
+      messages: [{ role: "user", content: "oi" }],
+      fetchImpl,
+      fallbacks: ["openai/gpt-4o-mini", "openrouter/free"],
+    });
+    const body = JSON.parse(String((fetchImpl.mock.calls[0] as [string, RequestInit])[1].body));
+    expect(body.models).toEqual(["openrouter/free"]);
   });
 });

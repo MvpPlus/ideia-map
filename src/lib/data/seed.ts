@@ -380,9 +380,9 @@ export function createSeed(): DatabaseSnapshot {
       id: "ai_1",
       openrouter_api_key: "",
       models: {
-        prompt: "openai/gpt-4o-mini",
-        prd: "openai/gpt-4o-mini",
-        chat: "openai/gpt-4o-mini",
+        prompt: "openrouter/free",
+        prd: "openrouter/free",
+        chat: "openrouter/free",
       },
     },
   };
