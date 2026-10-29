@@ -109,8 +109,7 @@ export function useProjectBundle(projectId: string) {
     const project = db?.projects.find((p) => p.id === projectId);
     const requirements = db?.requirements.filter((r) => r.project_id === projectId) ?? [];
     const screens = db?.screens.filter((s) => s.project_id === projectId) ?? [];
-    const chat =
-      db?.chat_messages.filter((m) => m.project_id === projectId && m.context === "overview") ?? [];
+    const chat = db?.chat_messages.filter((m) => m.project_id === projectId) ?? [];
     const versions = db?.project_versions.filter((v) => v.project_id === projectId) ?? [];
     const exports = db?.exports.filter((e) => e.project_id === projectId) ?? [];
     const analyses = db?.analyses?.filter((a) => a.project_id === projectId) ?? [];

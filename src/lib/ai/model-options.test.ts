@@ -35,3 +35,27 @@ describe("specs/010-google-ai AC-4", () => {
     expect(merged.some((m) => m.provider === "google" && m.id === "gemini-2.0-flash")).toBe(true);
   });
 });
+
+describe("specs/018-provedores-ia-gratis AC-5", () => {
+  it("AC-5 Catálogo e rótulos Groq/Mistral/Cloudflare", () => {
+    expect(catalogLabel({ id: "llama-3.3-70b-versatile", name: "Llama 3.3", provider: "groq" })).toBe(
+      "Groq: Llama 3.3",
+    );
+    expect(catalogLabel({ id: "mistral-small-latest", name: "Small", provider: "mistral" })).toBe(
+      "Mistral: Small",
+    );
+    expect(
+      catalogLabel({ id: "@cf/meta/llama-3.1-8b-instruct", name: "Llama 3.1 8B", provider: "cloudflare" }),
+    ).toBe("Cloudflare: Llama 3.1 8B");
+    const merged = mergeModelCatalog(
+      [],
+      [],
+      [{ id: "llama-3.3-70b-versatile", name: "Llama 3.3 70B" }],
+      [{ id: "mistral-small-latest", name: "Mistral Small" }],
+      [{ id: "@cf/meta/llama-3.1-8b-instruct", name: "Llama 3.1 8B" }],
+    );
+    expect(merged.some((m) => m.provider === "groq")).toBe(true);
+    expect(merged.some((m) => m.provider === "mistral")).toBe(true);
+    expect(merged.some((m) => m.provider === "cloudflare")).toBe(true);
+  });
+});

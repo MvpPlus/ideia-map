@@ -23,6 +23,8 @@ Thumbs.db
 .env
 .env*.local
 .ideiamap-usage.json
+.ideiamap-telegram-sessions.json
+.ideiamap-telegram-db.json
 
 # debug
 npm-debug.log*

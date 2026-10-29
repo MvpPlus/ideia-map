@@ -13,7 +13,7 @@ Produto: transformar briefings em planejamento de software editável, depois exp
 - Next.js App Router, TypeScript, Tailwind
 - Dados: `DataRepository` + `MockAdapter` (`localStorage`) ou `SupabaseAdapter` (`DATA_SOURCE=supabase`)
 - Deploy teste: `docs/deploy-vercel-supabase.md` · migration em `supabase/migrations/`
-- OpenRouter e Google AI Studio: chaves no admin → `.env.local` (`OPENROUTER_API_KEY`, `GOOGLE_AI_STUDIO_API_KEY`). Load balance round-robin; até 5 modelos em cada. Sem chave no cliente. Consumo (tokens e USD estimado) na aba admin **Consumo**.
+- OpenRouter, Google AI Studio, Groq, Mistral e Cloudflare Workers AI: chaves no admin → `.env.local` (`OPENROUTER_API_KEY`, `GOOGLE_AI_STUDIO_API_KEY`, `GROQ_API_KEY`, `MISTRAL_API_KEY`, `CLOUDFLARE_API_TOKEN` + `CLOUDFLARE_ACCOUNT_ID`). Load balance round-robin entre os que tiverem chave; se um falhar, o próximo assume. Até 5 modelos por cadeia. Sem chave no cliente. Consumo (tokens e USD estimado) na aba admin **Consumo**.
 - Segurança: RLS e isolamento por dono — ver `.cursor/rules/seguranca.mdc` e `specs/009-seguranca-rls.md`.
 
 ## Onde olhar
@@ -29,5 +29,5 @@ Produto: transformar briefings em planejamento de software editável, depois exp
 
 ## Recorte
 
-Núcleo: auth, dashboard, novo projeto, trilha do projeto, menu lateral em todo o app (spec 017), entrevista → PRD, documentos técnicos em cadeia (TRD, fluxo, UI/UX, backend, plano), overview, telas, export, perfil, admin, análise, competitivo, personas, banco (Cheerio + modelo Prompt).  
-Adiado: Auth Supabase, Playwright, crawler autenticado, Stripe.
+Núcleo: auth, dashboard, novo projeto, trilha do projeto, menu lateral em todo o app (spec 017), entrevista → PRD, documentos técnicos em cadeia (TRD, fluxo, UI/UX, backend, plano), overview, telas, export, perfil, admin, análise, competitivo, personas, banco (Cheerio + modelo Prompt), chat flutuante do projeto com anexos (spec 019), bot Telegram (admin + login + projetos, spec 020).  
+Adiado: Auth Supabase (fluxo completo no browser além do bot), Playwright, crawler autenticado, Stripe.

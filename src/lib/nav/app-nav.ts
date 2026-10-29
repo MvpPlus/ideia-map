@@ -10,6 +10,7 @@ export type AdminSection = {
 export const ADMIN_SECTIONS: AdminSection[] = [
   { slug: "openrouter", label: "OpenRouter" },
   { slug: "consumo", label: "Consumo" },
+  { slug: "telegram", label: "Telegram" },
   { slug: "usuarios", label: "Usuários" },
   { slug: "planos", label: "Planos" },
   { slug: "jobs", label: "Jobs" },

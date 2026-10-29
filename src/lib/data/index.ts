@@ -3,10 +3,8 @@ import { getSupabaseAdapter } from "@/lib/data/supabase-adapter";
 import type { DataRepository } from "@/lib/data/repository";
 import { assertNoServiceRoleInPublicEnv, isSupabaseDataSource } from "@/lib/supabase/env";
 
-const source = process.env.NEXT_PUBLIC_DATA_SOURCE ?? process.env.DATA_SOURCE ?? "mock";
-
 export function isSupabaseMode(): boolean {
-  return source === "supabase";
+  return isSupabaseDataSource();
 }
 
 export async function bootstrapDataSource(): Promise<void> {
@@ -17,6 +15,7 @@ export async function bootstrapDataSource(): Promise<void> {
 }
 
 export function dataRepository(): DataRepository {
+  const source = process.env.NEXT_PUBLIC_DATA_SOURCE ?? process.env.DATA_SOURCE ?? "mock";
   if (source === "supabase") {
     return getSupabaseAdapter();
   }

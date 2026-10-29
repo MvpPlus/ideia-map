@@ -18,3 +18,6 @@ Dado o overlay aberto, quando o tempo passa, então a barra avança e não ultra
 
 ### AC-3 Frases
 Dado o overlay aberto, quando a espera continua, então há ao menos 30 frases no tom do briefing/unicórnio, e a ordem da sessão é aleatória (sem repetir até esgotar o baralho).
+
+### AC-4 Chat sem overlay
+Dado o chat flutuante do projeto (spec 019), quando o usuário envia uma mensagem e a IA ainda não respondeu, então **não** aparece overlay de tela cheia: a mensagem do usuário entra na lista na hora e o assistente mostra um balão com animação de digitando (`…`), no estilo WhatsApp, até a resposta chegar.

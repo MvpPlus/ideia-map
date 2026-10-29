@@ -44,11 +44,13 @@ const RATES: { test: (model: string) => boolean; inUsd: number; outUsd: number }
 const FALLBACK = { inUsd: 0.15, outUsd: 0.6 };
 
 export function estimateUsd(
-  _provider: LlmProvider,
+  provider: LlmProvider,
   model: string,
   promptTokens: number,
   completionTokens: number,
 ): number {
+  // Contas free do Groq/Mistral/Cloudflare e modelos :free: estimativa 0 (não é fatura).
+  if (provider === "groq" || provider === "mistral" || provider === "cloudflare") return 0;
   const rate = RATES.find((row) => row.test(model)) ?? FALLBACK;
   return (Math.max(0, promptTokens) / 1_000_000) * rate.inUsd + (Math.max(0, completionTokens) / 1_000_000) * rate.outUsd;
 }

@@ -3,7 +3,7 @@
 import { AppShell } from "@/components/shell/app-shell";
 import { Button } from "@/components/ui/button";
 import { Field, fieldClass, Input, Select, Textarea } from "@/components/ui/input";
-import { catalogLabel, optionsForSlot } from "@/lib/ai/model-options";
+import { catalogLabel, optionsForSlot, providerDisplayName } from "@/lib/ai/model-options";
 import { adminSection } from "@/lib/nav/app-nav";
 import { useParams } from "next/navigation";
 import { dataRepository } from "@/lib/data";
@@ -41,6 +41,7 @@ export default function AdminPage() {
           {tab === "auditoria" ? <AuditPanel /> : null}
           {tab === "custos" ? <CostsPanel /> : null}
           {tab === "consumo" ? <UsagePanel /> : null}
+          {tab === "telegram" ? <TelegramPanel /> : null}
           {tab === "openrouter" ? <OpenRouterPanel settings={db.ai_settings} /> : null}
         </div>
       </div>
@@ -342,7 +343,8 @@ function UsagePanel() {
                 <span>
                   {row.model}
                   <span className="mt-1 block text-xs text-mute">
-                    {row.provider} · {row.calls} chamada{row.calls === 1 ? "" : "s"} · {row.tokens.toLocaleString("pt-BR")} tokens
+                    {providerDisplayName(row.provider)} · {row.calls} chamada{row.calls === 1 ? "" : "s"} ·{" "}
+                    {row.tokens.toLocaleString("pt-BR")} tokens
                   </span>
                 </span>
                 <span>{formatUsd(row.estimatedUsd)}</span>
@@ -357,7 +359,7 @@ function UsagePanel() {
           {summary.byProvider.map((row) => (
             <li key={row.provider} className="flex justify-between px-3 py-3 text-sm">
               <span>
-                {row.provider === "google" ? "Google AI Studio" : "OpenRouter"}
+                {providerDisplayName(row.provider)}
                 <span className="mt-1 block text-xs text-mute">
                   {row.calls} chamada{row.calls === 1 ? "" : "s"} · {row.tokens.toLocaleString("pt-BR")} tokens
                 </span>
@@ -388,6 +390,179 @@ function UsagePanel() {
   );
 }
 
+function TelegramPanel() {
+  const toast = useAppStore((s) => s.toast);
+  const [botConfigured, setBotConfigured] = useState(false);
+  const [botMasked, setBotMasked] = useState<string | null>(null);
+  const [secretConfigured, setSecretConfigured] = useState(false);
+  const [secretMasked, setSecretMasked] = useState<string | null>(null);
+  const [suggestedWebhookUrl, setSuggestedWebhookUrl] = useState("");
+  const [webhookUrl, setWebhookUrl] = useState<string | null>(null);
+  const [webhookError, setWebhookError] = useState<string | null>(null);
+  const [tokenDraft, setTokenDraft] = useState("");
+  const [secretDraft, setSecretDraft] = useState("");
+  const [customUrl, setCustomUrl] = useState("");
+  const [error, setError] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [registering, setRegistering] = useState(false);
+
+  function applyStatus(data: {
+    botConfigured?: boolean;
+    botMasked?: string | null;
+    secretConfigured?: boolean;
+    secretMasked?: string | null;
+    suggestedWebhookUrl?: string;
+    webhookUrl?: string | null;
+    webhookError?: string | null;
+  }) {
+    setBotConfigured(Boolean(data.botConfigured));
+    setBotMasked(data.botMasked ?? null);
+    setSecretConfigured(Boolean(data.secretConfigured));
+    setSecretMasked(data.secretMasked ?? null);
+    setSuggestedWebhookUrl(data.suggestedWebhookUrl ?? "");
+    setWebhookUrl(data.webhookUrl ?? null);
+    setWebhookError(data.webhookError ?? null);
+  }
+
+  useEffect(() => {
+    fetch("/api/telegram/status")
+      .then((r) => r.json())
+      .then(applyStatus)
+      .catch(() => setError("Não carregou o status do Telegram."));
+  }, []);
+
+  return (
+    <div className="max-w-xl space-y-4">
+      <p className="text-sm text-mute">
+        Crie o bot no @BotFather, cole o token e um secret aleatório para o webhook. Em produção use a URL
+        pública (Vercel); localmente use um túnel (ngrok/cloudflared) apontando para a porta do Next.
+      </p>
+      <p className="text-sm text-mute">
+        Token: {botConfigured ? botMasked : "não configurado"}. Secret:{" "}
+        {secretConfigured ? secretMasked : "não configurado"}.
+      </p>
+      <p className="text-sm break-all">
+        URL sugerida: <code className="text-xs">{suggestedWebhookUrl || "…"}</code>
+      </p>
+      {webhookUrl ? (
+        <p className="text-sm break-all text-mute">
+          Webhook ativo: <code className="text-xs">{webhookUrl}</code>
+        </p>
+      ) : null}
+      {webhookError ? <p className="text-sm text-marco">Último erro Telegram: {webhookError}</p> : null}
+      <form
+        className="space-y-3"
+        onSubmit={async (e) => {
+          e.preventDefault();
+          setError("");
+          setSaving(true);
+          try {
+            const response = await fetch("/api/telegram/key", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                botToken: tokenDraft.trim() || undefined,
+                webhookSecret: secretDraft.trim() || undefined,
+              }),
+            });
+            const body = (await response.json()) as {
+              error?: string;
+              botConfigured?: boolean;
+              botMasked?: string | null;
+              secretConfigured?: boolean;
+              secretMasked?: string | null;
+            };
+            if (!response.ok) throw new Error(body.error ?? "Não gravou.");
+            applyStatus(body);
+            setTokenDraft("");
+            setSecretDraft("");
+            toast("Credenciais Telegram gravadas em .env.local.");
+            const status = await fetch("/api/telegram/status").then((r) => r.json());
+            applyStatus(status);
+          } catch (err) {
+            setError(err instanceof Error ? err.message : "Falha ao salvar.");
+          } finally {
+            setSaving(false);
+          }
+        }}
+      >
+        <Field label="TELEGRAM_BOT_TOKEN">
+          <Input
+            type="password"
+            autoComplete="off"
+            value={tokenDraft}
+            placeholder={botConfigured ? "Cole um novo token para substituir" : "123456:ABC…"}
+            onChange={(e) => setTokenDraft(e.target.value)}
+          />
+        </Field>
+        <Field label="TELEGRAM_WEBHOOK_SECRET">
+          <Input
+            type="password"
+            autoComplete="off"
+            value={secretDraft}
+            placeholder={secretConfigured ? "Cole um novo secret para substituir" : "string aleatória"}
+            onChange={(e) => setSecretDraft(e.target.value)}
+          />
+        </Field>
+        <Button type="submit" disabled={saving}>
+          {saving ? "Salvando…" : "Salvar token e secret"}
+        </Button>
+      </form>
+      <Field label="URL do webhook (opcional)">
+        <Input
+          value={customUrl}
+          placeholder={suggestedWebhookUrl || "https://seu-dominio/api/telegram"}
+          onChange={(e) => setCustomUrl(e.target.value)}
+        />
+      </Field>
+      <Button
+        type="button"
+        variant="ghost"
+        disabled={registering}
+        onClick={async () => {
+          setError("");
+          setRegistering(true);
+          try {
+            const response = await fetch("/api/telegram/webhook", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ url: customUrl.trim() || undefined }),
+            });
+            const body = (await response.json()) as { error?: string; url?: string };
+            if (!response.ok) throw new Error(body.error ?? "Falha no setWebhook.");
+            toast(`Webhook registrado: ${body.url}`);
+            const status = await fetch("/api/telegram/status").then((r) => r.json());
+            applyStatus(status);
+          } catch (err) {
+            setError(err instanceof Error ? err.message : "Falha ao registrar.");
+          } finally {
+            setRegistering(false);
+          }
+        }}
+      >
+        {registering ? "Registrando…" : "Registrar webhook"}
+      </Button>
+      {error ? <p className="text-sm text-marco">{error}</p> : null}
+    </div>
+  );
+}
+
+type CatalogProviderUi = "openrouter" | "google" | "groq" | "mistral" | "cloudflare";
+
+type KeyStatus = {
+  configured?: boolean;
+  masked?: string | null;
+  googleConfigured?: boolean;
+  googleMasked?: string | null;
+  groqConfigured?: boolean;
+  groqMasked?: string | null;
+  mistralConfigured?: boolean;
+  mistralMasked?: string | null;
+  cloudflareConfigured?: boolean;
+  cloudflareTokenMasked?: string | null;
+  cloudflareAccountMasked?: string | null;
+};
+
 function OpenRouterPanel({ settings }: { settings: AiSettings }) {
   const refresh = useAppStore((s) => s.refresh);
   const toast = useAppStore((s) => s.toast);
@@ -395,25 +570,38 @@ function OpenRouterPanel({ settings }: { settings: AiSettings }) {
   const [masked, setMasked] = useState<string | null>(null);
   const [googleConfigured, setGoogleConfigured] = useState(false);
   const [googleMasked, setGoogleMasked] = useState<string | null>(null);
+  const [groqConfigured, setGroqConfigured] = useState(false);
+  const [groqMasked, setGroqMasked] = useState<string | null>(null);
+  const [mistralConfigured, setMistralConfigured] = useState(false);
+  const [mistralMasked, setMistralMasked] = useState<string | null>(null);
+  const [cloudflareConfigured, setCloudflareConfigured] = useState(false);
+  const [cloudflareTokenMasked, setCloudflareTokenMasked] = useState<string | null>(null);
+  const [cloudflareAccountMasked, setCloudflareAccountMasked] = useState<string | null>(null);
   const [keyDraft, setKeyDraft] = useState("");
   const [googleDraft, setGoogleDraft] = useState("");
-  const [models, setModels] = useState<{ id: string; name: string; provider?: "openrouter" | "google" }[]>([]);
+  const [groqDraft, setGroqDraft] = useState("");
+  const [mistralDraft, setMistralDraft] = useState("");
+  const [cloudflareTokenDraft, setCloudflareTokenDraft] = useState("");
+  const [cloudflareAccountDraft, setCloudflareAccountDraft] = useState("");
+  const [models, setModels] = useState<{ id: string; name: string; provider?: CatalogProviderUi }[]>([]);
   const [draft, setDraft] = useState(settings.models);
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
 
   const [loadingModels, setLoadingModels] = useState(false);
 
-  function applyStatus(data: {
-    configured?: boolean;
-    masked?: string | null;
-    googleConfigured?: boolean;
-    googleMasked?: string | null;
-  }) {
+  function applyStatus(data: KeyStatus) {
     setConfigured(Boolean(data.configured));
     setMasked(data.masked ?? null);
     setGoogleConfigured(Boolean(data.googleConfigured));
     setGoogleMasked(data.googleMasked ?? null);
+    setGroqConfigured(Boolean(data.groqConfigured));
+    setGroqMasked(data.groqMasked ?? null);
+    setMistralConfigured(Boolean(data.mistralConfigured));
+    setMistralMasked(data.mistralMasked ?? null);
+    setCloudflareConfigured(Boolean(data.cloudflareConfigured));
+    setCloudflareTokenMasked(data.cloudflareTokenMasked ?? null);
+    setCloudflareAccountMasked(data.cloudflareAccountMasked ?? null);
   }
 
   async function loadCatalog() {
@@ -422,9 +610,12 @@ function OpenRouterPanel({ settings }: { settings: AiSettings }) {
     try {
       const response = await fetch("/api/ai/models?free=1");
       const body = (await response.json()) as {
-        models?: { id: string; name: string; provider?: "openrouter" | "google" }[];
+        models?: { id: string; name: string; provider?: CatalogProviderUi }[];
         openrouterCount?: number;
         googleCount?: number;
+        groqCount?: number;
+        mistralCount?: number;
+        cloudflareCount?: number;
         error?: string;
         warnings?: string[];
       };
@@ -438,11 +629,14 @@ function OpenRouterPanel({ settings }: { settings: AiSettings }) {
           chat: list.some((m) => m.id === current.chat) ? current.chat : list[0].id,
         }));
       }
-      const orCount = body.openrouterCount ?? list.filter((m) => m.provider !== "google").length;
+      const orCount = body.openrouterCount ?? list.filter((m) => m.provider === "openrouter").length;
       const googleCount = body.googleCount ?? list.filter((m) => m.provider === "google").length;
+      const groqCount = body.groqCount ?? list.filter((m) => m.provider === "groq").length;
+      const mistralCount = body.mistralCount ?? list.filter((m) => m.provider === "mistral").length;
+      const cloudflareCount = body.cloudflareCount ?? list.filter((m) => m.provider === "cloudflare").length;
       toast(
         list.length
-          ? `${orCount} OpenRouter · ${googleCount} Google AI Studio nos menus Prompt, PRD e Chat.`
+          ? `${orCount} OpenRouter · ${googleCount} Google · ${groqCount} Groq · ${mistralCount} Mistral · ${cloudflareCount} Cloudflare nos menus.`
           : "Nenhum modelo encontrado nessas chaves.",
       );
       if (body.warnings?.length) setError(body.warnings.join(" "));
@@ -456,14 +650,17 @@ function OpenRouterPanel({ settings }: { settings: AiSettings }) {
   useEffect(() => {
     fetch("/api/ai/status")
       .then((r) => r.json())
-      .then((data: {
-        configured?: boolean;
-        masked?: string | null;
-        googleConfigured?: boolean;
-        googleMasked?: string | null;
-      }) => {
+      .then((data: KeyStatus) => {
         applyStatus(data);
-        if (data.configured || data.googleConfigured) void loadCatalog();
+        if (
+          data.configured ||
+          data.googleConfigured ||
+          data.groqConfigured ||
+          data.mistralConfigured ||
+          data.cloudflareConfigured
+        ) {
+          void loadCatalog();
+        }
       })
       .catch(() => setConfigured(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps -- carga inicial
@@ -479,26 +676,32 @@ function OpenRouterPanel({ settings }: { settings: AiSettings }) {
         try {
           const wroteOr = Boolean(keyDraft.trim());
           const wroteGoogle = Boolean(googleDraft.trim());
-          if (wroteOr || wroteGoogle) {
+          const wroteGroq = Boolean(groqDraft.trim());
+          const wroteMistral = Boolean(mistralDraft.trim());
+          const wroteCfToken = Boolean(cloudflareTokenDraft.trim());
+          const wroteCfAccount = Boolean(cloudflareAccountDraft.trim());
+          if (wroteOr || wroteGoogle || wroteGroq || wroteMistral || wroteCfToken || wroteCfAccount) {
             const response = await fetch("/api/ai/key", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
                 openrouter: wroteOr ? keyDraft.trim() : undefined,
                 google: wroteGoogle ? googleDraft.trim() : undefined,
+                groq: wroteGroq ? groqDraft.trim() : undefined,
+                mistral: wroteMistral ? mistralDraft.trim() : undefined,
+                cloudflareToken: wroteCfToken ? cloudflareTokenDraft.trim() : undefined,
+                cloudflareAccountId: wroteCfAccount ? cloudflareAccountDraft.trim() : undefined,
               }),
             });
-            const body = (await response.json()) as {
-              error?: string;
-              configured?: boolean;
-              masked?: string;
-              googleConfigured?: boolean;
-              googleMasked?: string | null;
-            };
+            const body = (await response.json()) as KeyStatus & { error?: string };
             if (!response.ok) throw new Error(body.error ?? "Não gravou a chave.");
             applyStatus(body);
             setKeyDraft("");
             setGoogleDraft("");
+            setGroqDraft("");
+            setMistralDraft("");
+            setCloudflareTokenDraft("");
+            setCloudflareAccountDraft("");
             void loadCatalog();
           }
           dataRepository().saveAiSettings({
@@ -508,7 +711,7 @@ function OpenRouterPanel({ settings }: { settings: AiSettings }) {
           });
           refresh();
           toast(
-            wroteOr || wroteGoogle
+            wroteOr || wroteGoogle || wroteGroq || wroteMistral || wroteCfToken || wroteCfAccount
               ? "Chaves gravadas em .env.local. Modelos salvos neste navegador."
               : "Modelos salvos neste navegador.",
           );
@@ -522,9 +725,15 @@ function OpenRouterPanel({ settings }: { settings: AiSettings }) {
       <p className="text-sm text-mute">
         {configured === null
           ? "Checando o servidor…"
-          : `OpenRouter: ${configured ? masked : "sem chave"}. Google AI Studio: ${
+          : `OpenRouter: ${configured ? masked : "sem chave"}. Google: ${
               googleConfigured ? googleMasked : "sem chave"
-            }. As duas vão para .env.local (gitignore). O servidor equilibra as chamadas entre os dois.`}
+            }. Groq: ${groqConfigured ? groqMasked : "sem chave"}. Mistral: ${
+              mistralConfigured ? mistralMasked : "sem chave"
+            }. Cloudflare: ${
+              cloudflareConfigured
+                ? `${cloudflareTokenMasked} / ${cloudflareAccountMasked}`
+                : "sem token+account"
+            }. Chaves em .env.local (gitignore). Round-robin entre os que tiverem chave; se um falhar, o próximo assume.`}
       </p>
       <Field label="Chave OpenRouter">
         <Input
@@ -542,6 +751,42 @@ function OpenRouterPanel({ settings }: { settings: AiSettings }) {
           value={googleDraft}
           placeholder={googleConfigured ? "Cole uma nova chave para substituir" : "AIza..."}
           onChange={(e) => setGoogleDraft(e.target.value)}
+        />
+      </Field>
+      <Field label="Chave Groq (gratuita)">
+        <Input
+          type="password"
+          autoComplete="off"
+          value={groqDraft}
+          placeholder={groqConfigured ? "Cole uma nova chave para substituir" : "gsk_..."}
+          onChange={(e) => setGroqDraft(e.target.value)}
+        />
+      </Field>
+      <Field label="Chave Mistral (gratuita)">
+        <Input
+          type="password"
+          autoComplete="off"
+          value={mistralDraft}
+          placeholder={mistralConfigured ? "Cole uma nova chave para substituir" : "…"}
+          onChange={(e) => setMistralDraft(e.target.value)}
+        />
+      </Field>
+      <Field label="Cloudflare API Token (Workers AI)">
+        <Input
+          type="password"
+          autoComplete="off"
+          value={cloudflareTokenDraft}
+          placeholder={cloudflareTokenMasked ? "Cole um novo token para substituir" : "API token"}
+          onChange={(e) => setCloudflareTokenDraft(e.target.value)}
+        />
+      </Field>
+      <Field label="Cloudflare Account ID">
+        <Input
+          type="text"
+          autoComplete="off"
+          value={cloudflareAccountDraft}
+          placeholder={cloudflareAccountMasked ? "Cole um novo Account ID para substituir" : "Account ID"}
+          onChange={(e) => setCloudflareAccountDraft(e.target.value)}
         />
       </Field>
       <Button type="button" variant="ghost" onClick={() => void loadCatalog()} disabled={loadingModels}>

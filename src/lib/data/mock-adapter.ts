@@ -644,14 +644,14 @@ export class MockAdapter implements DataRepository {
   }
 
   listChat(projectId: string): ChatMessage[] {
-    return this.db.chat_messages.filter((m) => m.project_id === projectId && m.context === "overview");
+    return this.db.chat_messages.filter((m) => m.project_id === projectId);
   }
 
   sendChat(projectId: string, content: string, ai?: { reply: string; requirement: { title: string; description: string; priority: Requirement["priority"] } | null }): ChatMessage[] {
     const userMsg: ChatMessage = {
       id: uid("chat"),
       project_id: projectId,
-      context: "overview",
+      context: "project",
       role: "user",
       content,
     };
@@ -659,7 +659,7 @@ export class MockAdapter implements DataRepository {
     const assistant: ChatMessage = {
       id: uid("chat"),
       project_id: projectId,
-      context: "overview",
+      context: "project",
       role: "assistant",
       content:
         ai?.reply ??

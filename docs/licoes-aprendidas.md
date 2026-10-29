@@ -34,6 +34,8 @@ Formato de entrada: **data · contexto · o que deu errado ou mudou · daqui pra
 
 ## IA / OpenRouter
 
+- **2026-10-29 · provedores free** · Só OpenRouter + Google estouravam cota e quebravam o fluxo. · Groq, Mistral e Cloudflare Workers AI entram no mesmo round-robin (`completeLlm`); chaves no admin (`GROQ_API_KEY`, `MISTRAL_API_KEY`, `CLOUDFLARE_API_TOKEN` + `CLOUDFLARE_ACCOUNT_ID`); se um falha, o próximo assume. Spec `018-provedores-ia-gratis`.
+
 - **2026-09-17 · chave** · IA mockada não serve. · Chave colada no admin, gravada em `.env.local` (gitignore); em produção, `OPENROUTER_API_KEY` é secret. Sem chave no cliente. Leitura por request (`loadOpenRouterKey()`), sem depender de restart.
 
 - **2026-09-19 · consumo IA** · Não havia visão de tokens no admin. · Aba **Consumo**: chamadas, tokens e USD estimado a partir das respostas da OpenRouter/Gemini. Arquivo local gitignore; não é fatura real.
@@ -69,6 +71,16 @@ Formato de entrada: **data · contexto · o que deu errado ou mudou · daqui pra
 - **2026-09-28 · recursos recomendados alucinados** · Sem âncora, o modelo gratuito não sugeria skills/repos e inventava "plano gratuito" de gateway pago. · Catálogo curado (`src/lib/ai/resource-catalog.ts`) no prompt; serviço só do catálogo, com limite gratuito do catálogo; links do GitHub conferidos na API pública (some inexistente/arquivado). Revisar o catálogo quando planos mudarem.
 
 ## UI e fluxos
+
+- **2026-10-29 · bot Telegram** · Pedido: administrar o bot no painel e usar login + projetos no celular. · Admin → Telegram grava `TELEGRAM_*` em `.env.local`; webhook `POST /api/telegram` com secret; FSM (login, home, projetos, docs) com botões e texto livre (spec 020). Em mock o bot usa arquivo servidor (`.ideiamap-telegram-db.json`), não o `localStorage` do browser — produção = Supabase com JWT do usuário (sem service role).
+
+- **2026-10-29 · sessões Telegram na Vercel** · Arquivo JSON no disco some entre invocações serverless. · Com `DATA_SOURCE=supabase`, sessões vão na tabela `telegram_sessions` via `SUPABASE_SECRET_KEY` (RLS sem policy para anon/auth). Rodar migration `20261029180000_telegram_sessions.sql` antes do bot em produção.
+
+- **2026-10-29 · chat flutuante** · Chat vivia só no overview (painel lateral) e sem anexos. · Bolha em todas as telas do projeto (`ProjectChatFab`); contexto = projeto + página; imagem (Gemini vision), doc txt/md/pdf, áudio (Groq Whisper); digitando sem overlay; FAB com balão+Chat, clipe e microfone. Spec `019`.
+
+- **2026-10-29 · áudio no chat** · Gravação virava chip `audio:gravacao…`, pedia Enviar e mostrava `…`/digitando enquanto transcrevia. · Parar o mic envia na hora; histórico só com o texto falado (sem rótulo Transcrição/nome do arquivo); espera quieta (`quietWait`) até a transcrição — delay ok, placeholder `…` não. Spec `019` AC-8.
+
+- **2026-10-29 · chat overlay** · Enviar no chat do overview bloqueava a tela inteira com `AiWaitOverlay`. · Chat usa balão de digitando (`…`) + mensagem do usuário na hora; overlay fica só para gerações longas (plano, docs, etc.). Spec `006` AC-4.
 
 - **2026-09-17 · telas** · Preview era stub “Wireframe inicial”, sem os componentes. · HTML deriva de nome, rota, descrição e componentes (`buildWireframeHtml`). Prévia com `iframe srcDoc`, não `data:` URL. Spec `007-screen-wireframe`.
 

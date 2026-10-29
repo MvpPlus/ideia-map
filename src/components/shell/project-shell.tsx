@@ -1,5 +1,6 @@
 "use client";
 
+import { ProjectChatFab } from "@/components/chat/project-chat-fab";
 import { useOpenProjectEdit } from "@/components/projects/use-open-edit";
 import { ProjectNav } from "@/components/shell/project-nav";
 import { SideShell } from "@/components/shell/side-shell";
@@ -72,6 +73,7 @@ export function ProjectShell({ children }: { children: React.ReactNode }) {
       )}
     >
       {blocked ? null : children}
+      {!blocked ? <ProjectChatFab projectId={project.id} /> : null}
     </SideShell>
   );
 }

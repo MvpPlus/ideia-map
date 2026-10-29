@@ -68,7 +68,7 @@ export type Screen = {
 export type ChatMessage = {
   id: string;
   project_id: string;
-  context: "overview" | "database";
+  context: "overview" | "database" | "project";
   role: "user" | "assistant";
   content: string;
 };

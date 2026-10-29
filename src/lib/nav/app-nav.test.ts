@@ -18,6 +18,7 @@ describe("specs/017-menu-lateral-app", () => {
     expect(ADMIN_SECTIONS.map((s) => [s.label, `/admin/${s.slug}`])).toEqual([
       ["OpenRouter", "/admin/openrouter"],
       ["Consumo", "/admin/consumo"],
+      ["Telegram", "/admin/telegram"],
       ["Usuários", "/admin/usuarios"],
       ["Planos", "/admin/planos"],
       ["Jobs", "/admin/jobs"],

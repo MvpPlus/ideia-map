@@ -11,6 +11,7 @@ Sem pagamento. Fora deste guia: Playwright, crawler autenticado, service role no
    - `supabase/migrations/20250928120000_project_prds.sql`
    - `supabase/migrations/20250929120000_project_artifacts.sql`
    - `supabase/migrations/20250930120000_ai_settings_free_default.sql`
+   - `supabase/migrations/20261029180000_telegram_sessions.sql` (sessões do bot Telegram no servidor)
 3. **Authentication → Providers** → Email ligado (confirmação de e-mail pode ficar desligada em dev/preview se quiser entrar rápido).
 4. **Project Settings → API Keys** → copie:
    - Project URL → `NEXT_PUBLIC_SUPABASE_URL`
@@ -37,7 +38,13 @@ Não coloque **secret** / service role em variável `NEXT_PUBLIC_*`.
 | `NEXT_PUBLIC_DATA_SOURCE` | `supabase` |
 | `OPENROUTER_API_KEY` | secret servidor |
 | `GOOGLE_AI_STUDIO_API_KEY` | secret servidor |
-| `NEXT_PUBLIC_SITE_URL` | URL do deploy (ex. `https://ideiamap.vercel.app`) — reset de senha |
+| `GROQ_API_KEY` | secret servidor (opcional, free) |
+| `MISTRAL_API_KEY` | secret servidor (opcional, free) |
+| `CLOUDFLARE_API_TOKEN` | secret servidor (opcional, Workers AI) |
+| `CLOUDFLARE_ACCOUNT_ID` | secret servidor (opcional, Workers AI) |
+| `NEXT_PUBLIC_SITE_URL` | URL do deploy (ex. `https://ideiamap.vercel.app`) — reset de senha e webhook Telegram |
+| `TELEGRAM_BOT_TOKEN` | Token do bot (BotFather); também pelo Admin → Telegram |
+| `TELEGRAM_WEBHOOK_SECRET` | Secret do header `X-Telegram-Bot-Api-Secret-Token` no webhook |
 
 3. Deploy (push na branch ou **Deploy** no dashboard).
 4. Local com os mesmos dados: `vercel env pull` → `.env.local` (não commitar).
@@ -55,6 +62,6 @@ Problemas comuns:
 
 - **“Adapter Supabase ainda não está ligado”** → `DATA_SOURCE` não é `supabase` no deploy.
 - **Login não persiste** → confira URL/publishable key e domínio do site em Auth → URL Configuration na Supabase.
-- **IA falha** → secrets OpenRouter/Google na Vercel, redeploy.
+- **IA falha** → secrets OpenRouter/Google/Groq/Mistral/Cloudflare na Vercel, redeploy.
 
 Local continua com `DATA_SOURCE=mock` e porta **3001** (`npm run dev`).
